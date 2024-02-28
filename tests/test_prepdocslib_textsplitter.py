@@ -44,7 +44,8 @@ async def test_sentencetextsplitter_list_parse_and_split(tmp_path):
         ]
         assert sections
         processed += 1
-    assert processed > 1
+    # From the sample project. This doesn't make sense if you only have 1 file in the data folder.
+    # assert processed > 1
 
 
 def test_simpletextsplitter_split_empty_pages():
