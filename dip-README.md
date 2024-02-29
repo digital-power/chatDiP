@@ -1,7 +1,7 @@
 # ChatDIP
 Welcome to the Digital Power AI chatbot solution based on this [Azure sample repository](https://github.com/Azure-Samples/azure-search-openai-demo).
 
-Since the authors of the Azure sample project have already documented almost all you need to know, this README is meant to navigate quickly to the relevant parts.
+Since the authors of the Azure sample project have already documented almost all you need to know, this README is meant to quickly navigate to the relevant parts.
 
 ## Directory structure
 The project constists of the following directories:
@@ -19,7 +19,9 @@ To collaborate on this project in an organised way we follow the [Github flow](h
 ### Changing the data
 The easiest way to change the underlying data that the chatbot uses, is to replace the files in the `/data` folder. After committing and pushing the code the to remote `main` branch, a "deploy" pipeline will upload the data to the Azure environment.
 
-If you are an **owner** of this project you can also use the `prepdocs` script to directly parse and upload documents from your local environment.
+> Uploading new documents will NOT delete the already existings data. To remove documents contact an owner.
+
+If you are an **owner** of this project you can also use the `prepdocs` script to directly parse and upload documents from your local environment. You can add the `--remove` or `--removeall` flag in the shell script to delete data from the index. Check [prepdocs.py](/scripts/prepdocs.py) on how to use them.
 
 ### Changing the infrastructure
 For the infrastructure you can use the same method as for data by first changing the Bicep files in the `/infra` folder. Secondly, after committing and pushing the code the to remote `main` branch, a "deploy" pipeline will update the infrastructure of the Azure environment.
