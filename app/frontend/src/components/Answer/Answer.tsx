@@ -2,6 +2,9 @@ import { useMemo } from "react";
 import { Stack, IconButton } from "@fluentui/react";
 import DOMPurify from "dompurify";
 
+import ThoughtProcessIcon from "../../assets/thought_process.svg";
+import SupportingContentIcon from "../../assets/supporting_content.svg";
+
 import styles from "./Answer.module.css";
 
 import { ChatAppResponse, getCitationFilePath } from "../../api";
@@ -43,20 +46,22 @@ export const Answer = ({
                     <div>
                         <IconButton
                             style={{ color: "black" }}
-                            iconProps={{ iconName: "Lightbulb" }}
                             title="Show thought process"
                             ariaLabel="Show thought process"
                             onClick={() => onThoughtProcessClicked()}
                             disabled={!answer.choices[0].context.thoughts?.length}
-                        />
+                        >
+                            <img src={ThoughtProcessIcon} alt="Open thought process" aria-hidden="true" width="24px" height="24px" />
+                        </IconButton>
                         <IconButton
                             style={{ color: "black" }}
-                            iconProps={{ iconName: "ClipboardList" }}
                             title="Show supporting content"
                             ariaLabel="Show supporting content"
                             onClick={() => onSupportingContentClicked()}
                             disabled={!answer.choices[0].context.data_points}
-                        />
+                        >
+                            <img src={SupportingContentIcon} alt="Open supporting content" aria-hidden="true" width="24px" height="24px" />
+                        </IconButton>
                     </div>
                 </Stack>
             </Stack.Item>
