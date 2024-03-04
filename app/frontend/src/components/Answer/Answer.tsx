@@ -45,7 +45,7 @@ export const Answer = ({
                     <AnswerIcon />
                     <div>
                         <IconButton
-                            style={{ color: "black" }}
+                            style={{ color: "#11271A" }}
                             title="Show thought process"
                             ariaLabel="Show thought process"
                             onClick={() => onThoughtProcessClicked()}
@@ -54,7 +54,7 @@ export const Answer = ({
                             <img src={ThoughtProcessIcon} alt="Open thought process" aria-hidden="true" width="24px" height="24px" />
                         </IconButton>
                         <IconButton
-                            style={{ color: "black" }}
+                            style={{ color: "#11271A" }}
                             title="Show supporting content"
                             ariaLabel="Show supporting content"
                             onClick={() => onSupportingContentClicked()}
