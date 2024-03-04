@@ -29,7 +29,7 @@
 }
 
 .chatEmptyStateTitle {
-    font-size: 4rem;
+    font-size: 4.25rem;
     font-weight: 600;
     margin-top: 0;
     margin-bottom: 30px;
@@ -101,7 +101,7 @@
 }
 
 .loadingLogo {
-    font-size: 28px;
+    font-size: 24px;
 }
 
 .commandsContainer {

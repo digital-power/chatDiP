@@ -14,6 +14,7 @@ html {
     color: #11271a;
 
     font-family:
+        "Sansation",
         "Segoe UI",
         -apple-system,
         BlinkMacSystemFont,
@@ -27,6 +28,7 @@ html {
         sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    font-size: 14px;
 }
 
 #root {
