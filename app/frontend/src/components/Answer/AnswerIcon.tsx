@@ -1,5 +1,5 @@
-import { Sparkle28Filled } from "@fluentui/react-icons";
+import DipLogoBullet from "../../assets/dip_logo_bullet.svg";
 
 export const AnswerIcon = () => {
-    return <Sparkle28Filled primaryFill={"rgba(115, 118, 225, 1)"} aria-hidden="true" aria-label="Answer logo" />;
+    return <img src={DipLogoBullet} alt="Digital Power bullet logo" aria-label="Bullet logo of Digital Power" aria-hidden="true" width="24px" height="24px" />;
 };

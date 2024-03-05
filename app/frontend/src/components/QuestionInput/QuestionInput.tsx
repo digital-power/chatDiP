@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { useMsal } from "@azure/msal-react";
-import { Stack, TextField } from "@fluentui/react";
+import { Stack, TextField, ITextFieldStyles } from "@fluentui/react";
 import { Button, Tooltip, Field, Textarea } from "@fluentui/react-components";
-import { Send28Filled } from "@fluentui/react-icons";
 import { isLoggedIn, requireAccessControl } from "../../authConfig";
+
+import SentIcon from "../../assets/sent.svg";
 
 import styles from "./QuestionInput.module.css";
 
@@ -69,10 +70,16 @@ export const QuestionInput = ({ onSend, disabled, placeholder, clearOnSend, init
                 value={question}
                 onChange={onQuestionChange}
                 onKeyDown={onEnterPress}
+                styles={{ field: [{ fontFamily: "Sansation" }] }}
             />
             <div className={styles.questionInputButtonsContainer}>
                 <Tooltip content="Ask question button" relationship="label">
-                    <Button size="large" icon={<Send28Filled primaryFill="rgba(115, 118, 225, 1)" />} disabled={sendQuestionDisabled} onClick={sendQuestion} />
+                    <Button
+                        size="large"
+                        icon={<img src={SentIcon} alt="Send question" aria-hidden="true" />}
+                        disabled={sendQuestionDisabled}
+                        onClick={sendQuestion}
+                    />
                 </Tooltip>
             </div>
         </Stack>

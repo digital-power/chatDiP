@@ -1,7 +1,8 @@
 import { useRef, useState, useEffect } from "react";
 import { Checkbox, Panel, DefaultButton, TextField, SpinButton, Slider } from "@fluentui/react";
-import { SparkleFilled } from "@fluentui/react-icons";
 import readNDJSONStream from "ndjson-readablestream";
+
+import DipLogoBullet from "../../assets/dip_logo_bullet.svg";
 
 import styles from "./Chat.module.css";
 
@@ -31,7 +32,7 @@ import { GPT4VSettings } from "../../components/GPT4VSettings";
 
 const Chat = () => {
     const defaultPromptTemplate = [
-        "Assistant helps the company employees with their healthcare plan questions, and questions about the employee handbook. Be brief in your answers.",
+        "Assistant helps the company employees with their questions. Be brief in your answers.",
         "Answer ONLY with the facts listed in the list of sources below. If there isn't enough information below, say you don't know.",
         "Do not generate answers that don't use the sources below. If asking a clarifying question to the user would help, ask the question.",
         "For tabular information return it as an html table. Do not return markdown format. If the question is not in English, answer in the language used in the question.",
@@ -288,7 +289,14 @@ const Chat = () => {
                 <div className={styles.chatContainer}>
                     {!lastQuestionRef.current ? (
                         <div className={styles.chatEmptyState}>
-                            <SparkleFilled fontSize={"120px"} primaryFill={"rgba(115, 118, 225, 1)"} aria-hidden="true" aria-label="Chat logo" />
+                            <img
+                                src={DipLogoBullet}
+                                alt="Digital Power bullet logo"
+                                aria-label="Bullet logo of Digital Power"
+                                aria-hidden="true"
+                                width="120px"
+                                height="120px"
+                            />
                             <h1 className={styles.chatEmptyStateTitle}>Chat with your data</h1>
                             <h2 className={styles.chatEmptyStateSubtitle}>Ask anything or try an example</h2>
                             <ExampleList onExampleClicked={onExampleClicked} useGPT4V={useGPT4V} />
