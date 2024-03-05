@@ -1,4 +1,4 @@
-import { Stack, Pivot, PivotItem } from "@fluentui/react";
+import { Stack, Pivot, PivotItem, IPivotStyles } from "@fluentui/react";
 import SyntaxHighlighter from "react-syntax-highlighter";
 
 import styles from "./AnalysisPanel.module.css";
@@ -54,12 +54,23 @@ export const AnalysisPanel = ({ answer, activeTab, activeCitation, citationHeigh
         fetchCitation();
     }, []);
 
+    const pivotStyles: Partial<IPivotStyles> = {
+        linkContent: { fontFamily: "Sansation" },
+        linkIsSelected: {
+            selectors: {
+                ":before": {
+                    backgroundColor: "#044318"
+                }
+            }
+        }
+    };
+
     return (
         <Pivot
             className={className}
             selectedKey={activeTab}
             onLinkClick={pivotItem => pivotItem && onActiveTabChanged(pivotItem.props.itemKey! as AnalysisPanelTabs)}
-            styles={{ linkContent: [{ fontFamily: "Sansation" }] }}
+            styles={pivotStyles}
         >
             <PivotItem
                 itemKey={AnalysisPanelTabs.ThoughtProcessTab}
