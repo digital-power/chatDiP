@@ -53,7 +53,7 @@
 
 .chatMessageStream {
     flex-grow: 1;
-    max-height: 1024px;
+    max-height: calc(100vh - 239px);
     max-width: 1028px;
     width: 100%;
     overflow-y: auto;
@@ -91,9 +91,7 @@
 .chatAnalysisPanel {
     flex: 1;
     overflow-y: auto;
-    max-height: 89vh;
-    margin-left: 20px;
-    margin-right: 20px;
+    max-height: 87vh;
 }
 
 .chatSettingsSeparator {
