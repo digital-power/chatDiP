@@ -41,16 +41,19 @@ from approaches.chatreadretrieveread import ChatReadRetrieveReadApproach
 from approaches.chatreadretrievereadvision import ChatReadRetrieveReadVisionApproach
 from approaches.retrievethenread import RetrieveThenReadApproach
 from approaches.retrievethenreadvision import RetrieveThenReadVisionApproach
+from approaches.utils import load_approach_configs, usecase_exists
 from config import (
     CONFIG_ASK_APPROACH,
     CONFIG_ASK_VISION_APPROACH,
     CONFIG_AUTH_CLIENT,
     CONFIG_BLOB_CONTAINER_CLIENT,
+    CONFIG_BLOB_CONTAINER_CLIENTS,
     CONFIG_CHAT_APPROACH,
     CONFIG_CHAT_VISION_APPROACH,
     CONFIG_GPT4V_DEPLOYED,
     CONFIG_OPENAI_CLIENT,
     CONFIG_SEARCH_CLIENT,
+    CONFIG_SEARCH_CLIENTS,
     CONFIG_SEMANTIC_RANKER_DEPLOYED,
     CONFIG_VECTOR_SEARCH_ENABLED,
 )
@@ -86,9 +89,9 @@ async def assets(path):
     return await send_from_directory(Path(__file__).resolve().parent / "static" / "assets", path)
 
 
-@bp.route("/content/<path>")
+@bp.route("/content/usecase/<usecase>/<path>")
 @authenticated_path
-async def content_file(path: str):
+async def content_file(usecase: str, path: str):
     """
     Serve content files from blob storage from within the app to keep the example self-contained.
     *** NOTE *** if you are using app services authentication, this route will return unauthorized to all users that are not logged in
@@ -96,13 +99,16 @@ async def content_file(path: str):
     if AZURE_ENFORCE_ACCESS_CONTROL is set to true, logged in users can only access files they have access to
     This is also slow and memory hungry.
     """
+    # Check if use case exists
+    assert usecase_exists(usecase), f"Use case `{usecase}` not found"
+
     # Remove page number from path, filename-1.txt -> filename.txt
     # This shouldn't typically be necessary as browsers don't send hash fragments to servers
     if path.find("#page=") > 0:
         path_parts = path.rsplit("#page=", 1)
         path = path_parts[0]
-    logging.info("Opening file %s", path)
-    blob_container_client = current_app.config[CONFIG_BLOB_CONTAINER_CLIENT]
+    logging.info("Opening file %s for usecase %s", path, usecase)
+    blob_container_client = current_app.config[CONFIG_BLOB_CONTAINER_CLIENTS][usecase]
     try:
         blob = await blob_container_client.get_blob_client(path).download_blob()
     except ResourceNotFoundError:
@@ -117,29 +123,6 @@ async def content_file(path: str):
     await blob.readinto(blob_file)
     blob_file.seek(0)
     return await send_file(blob_file, mimetype=mime_type, as_attachment=False, attachment_filename=path)
-
-
-@bp.route("/ask", methods=["POST"])
-@authenticated
-async def ask(auth_claims: Dict[str, Any]):
-    if not request.is_json:
-        return jsonify({"error": "request must be json"}), 415
-    request_json = await request.get_json()
-    context = request_json.get("context", {})
-    context["auth_claims"] = auth_claims
-    try:
-        use_gpt4v = context.get("overrides", {}).get("use_gpt4v", False)
-        approach: Approach
-        if use_gpt4v and CONFIG_ASK_VISION_APPROACH in current_app.config:
-            approach = cast(Approach, current_app.config[CONFIG_ASK_VISION_APPROACH])
-        else:
-            approach = cast(Approach, current_app.config[CONFIG_ASK_APPROACH])
-        r = await approach.run(
-            request_json["messages"], context=context, session_state=request_json.get("session_state")
-        )
-        return jsonify(r)
-    except Exception as error:
-        return error_response(error, "/ask")
 
 
 class JSONEncoder(json.JSONEncoder):
@@ -209,6 +192,39 @@ def config():
     )
 
 
+async def _build_usecase_clients(
+    azure_search_service: str,
+    search_credential: Union[AsyncTokenCredential, AzureKeyCredential],
+    blob_client: BlobServiceClient,
+):
+    """Builds search and blob clients for the different use cases
+
+    Args:
+        azure_search_service (str): The Azure search service name
+        search_credential (Union[AsyncTokenCredential, AzureKeyCredential]): The search credential to use
+        blob_client (BlobServiceClient): The blob client to use
+
+    Returns:
+        Dict[str, SearchClient]: A dictionary of search clients for the different use cases
+    """
+    search_clients, blob_clients = {}, {}
+
+    # Load predefined use cases from config file
+    usecases = load_approach_configs()
+
+    # Setup and store search/blob clients for the different use cases
+    for usecase in usecases:
+        search_clients[usecase["id"]] = SearchClient(
+            endpoint=f"https://{azure_search_service}.search.windows.net",
+            index_name=usecase["index_name"],
+            credential=search_credential,
+        )
+
+        blob_clients[usecase["id"]] = blob_client.get_container_client(usecase["container"])
+
+    return search_clients, blob_clients
+
+
 @bp.before_app_serving
 async def setup_clients():
     # Replace these with your own values, either in environment variables or directly here
@@ -262,7 +278,8 @@ async def setup_clients():
     search_key = None
     if AZURE_KEY_VAULT_NAME:
         key_vault_client = SecretClient(
-            vault_url=f"https://{AZURE_KEY_VAULT_NAME}.vault.azure.net", credential=azure_credential
+            vault_url=f"https://{AZURE_KEY_VAULT_NAME}.vault.azure.net",
+            credential=azure_credential,
         )
         search_key = SEARCH_SECRET_NAME and (await key_vault_client.get_secret(SEARCH_SECRET_NAME)).value
         await key_vault_client.close()
@@ -282,9 +299,17 @@ async def setup_clients():
     )
 
     blob_client = BlobServiceClient(
-        account_url=f"https://{AZURE_STORAGE_ACCOUNT}.blob.core.windows.net", credential=azure_credential
+        account_url=f"https://{AZURE_STORAGE_ACCOUNT}.blob.core.windows.net",
+        credential=azure_credential,
     )
     blob_container_client = blob_client.get_container_client(AZURE_STORAGE_CONTAINER)
+
+    # Set up search and blob clients for the different use cases
+    search_clients, blob_container_clients = await _build_usecase_clients(
+        azure_search_service=AZURE_SEARCH_SERVICE,
+        search_credential=search_credential,
+        blob_client=blob_client,
+    )
 
     # Set up authentication helper
     auth_helper = AuthenticationHelper(
@@ -327,7 +352,9 @@ async def setup_clients():
 
     current_app.config[CONFIG_OPENAI_CLIENT] = openai_client
     current_app.config[CONFIG_SEARCH_CLIENT] = search_client
+    current_app.config[CONFIG_SEARCH_CLIENTS] = search_clients
     current_app.config[CONFIG_BLOB_CONTAINER_CLIENT] = blob_container_client
+    current_app.config[CONFIG_BLOB_CONTAINER_CLIENTS] = blob_container_clients
     current_app.config[CONFIG_AUTH_CLIENT] = auth_helper
 
     current_app.config[CONFIG_GPT4V_DEPLOYED] = bool(USE_GPT4V)
@@ -337,7 +364,7 @@ async def setup_clients():
     # Various approaches to integrate GPT and external knowledge, most applications will use a single one of these patterns
     # or some derivative, here we include several for exploration purposes
     current_app.config[CONFIG_ASK_APPROACH] = RetrieveThenReadApproach(
-        search_client=search_client,
+        search_clients=search_clients,
         openai_client=openai_client,
         auth_helper=auth_helper,
         chatgpt_model=OPENAI_CHATGPT_MODEL,
@@ -354,9 +381,9 @@ async def setup_clients():
         token_provider = get_bearer_token_provider(azure_credential, "https://cognitiveservices.azure.com/.default")
 
         current_app.config[CONFIG_ASK_VISION_APPROACH] = RetrieveThenReadVisionApproach(
-            search_client=search_client,
+            search_clients=search_clients,
+            blob_container_clients=blob_container_clients,
             openai_client=openai_client,
-            blob_container_client=blob_container_client,
             auth_helper=auth_helper,
             vision_endpoint=AZURE_VISION_ENDPOINT,
             vision_token_provider=token_provider,
@@ -371,9 +398,9 @@ async def setup_clients():
         )
 
         current_app.config[CONFIG_CHAT_VISION_APPROACH] = ChatReadRetrieveReadVisionApproach(
-            search_client=search_client,
+            search_clients=search_clients,
+            blob_container_clients=blob_container_clients,
             openai_client=openai_client,
-            blob_container_client=blob_container_client,
             auth_helper=auth_helper,
             vision_endpoint=AZURE_VISION_ENDPOINT,
             vision_token_provider=token_provider,
@@ -388,7 +415,7 @@ async def setup_clients():
         )
 
     current_app.config[CONFIG_CHAT_APPROACH] = ChatReadRetrieveReadApproach(
-        search_client=search_client,
+        search_clients=search_clients,
         openai_client=openai_client,
         auth_helper=auth_helper,
         chatgpt_model=OPENAI_CHATGPT_MODEL,
@@ -404,8 +431,15 @@ async def setup_clients():
 
 @bp.after_app_serving
 async def close_clients():
+    await current_app.config[CONFIG_OPENAI_CLIENT].close()
     await current_app.config[CONFIG_SEARCH_CLIENT].close()
     await current_app.config[CONFIG_BLOB_CONTAINER_CLIENT].close()
+
+    for search_client in current_app.config[CONFIG_SEARCH_CLIENTS].values():
+        await search_client.close()
+
+    for blob_container_client in current_app.config[CONFIG_BLOB_CONTAINER_CLIENTS].values():
+        await blob_container_client.close()
 
 
 def create_app():

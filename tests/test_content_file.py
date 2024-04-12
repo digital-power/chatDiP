@@ -76,18 +76,18 @@ async def test_content_file(monkeypatch, mock_env, mock_acs_search):
 
     quart_app = app.create_app()
     async with quart_app.test_app() as test_app:
-        quart_app.config.update({"blob_container_client": blob_container_client})
+        quart_app.config.update({"blob_container_clients": {"demo": blob_container_client}})
 
         client = test_app.test_client()
-        response = await client.get("/content/notfound.pdf")
+        response = await client.get("/content/usecase/demo/notfound.pdf")
         assert response.status_code == 404
 
-        response = await client.get("/content/role_library.pdf")
+        response = await client.get("/content/usecase/demo/role_library.pdf")
         assert response.status_code == 200
         assert response.headers["Content-Type"] == "application/pdf"
         assert await response.get_data() == b"test content"
 
-        response = await client.get("/content/role_library.pdf#page=10")
+        response = await client.get("/content/usecase/demo/role_library.pdf#page=10")
         assert response.status_code == 200
         assert response.headers["Content-Type"] == "application/pdf"
         assert await response.get_data() == b"test content"

@@ -50,5 +50,13 @@ export async function chatApi(request: ChatAppRequest, idToken: string | undefin
 }
 
 export function getCitationFilePath(citation: string): string {
-    return `${BACKEND_URI}/content/${citation}`;
+    const hashParts = window.location.hash.split("/");
+    const usecaseIndex = hashParts.indexOf("usecase");
+
+    if (usecaseIndex !== -1) {
+        const usecase = hashParts[usecaseIndex + 1];
+        return `${BACKEND_URI}/content/usecase/${usecase}/${citation}`;
+    } else {
+        return `${BACKEND_URI}/content/usecase/demo/${citation}`;
+    }
 }

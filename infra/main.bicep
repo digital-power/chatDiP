@@ -39,7 +39,8 @@ param useSearchServiceKey bool = searchServiceSkuName == 'free'
 param storageAccountName string = ''
 param storageResourceGroupName string = ''
 param storageResourceGroupLocation string = location
-param storageContainerName string = 'content'
+param storageContainerNames array // Set in main.parameters.json
+param storageDefaultContainerName string = 'content'
 param storageSkuName string // Set in main.parameters.json
 
 param appServiceSkuName string // Set in main.parameters.json
@@ -243,7 +244,7 @@ module backend 'core/host/appservice.bicep' = {
     alwaysOn: appServiceSkuName != 'F1'
     appSettings: {
       AZURE_STORAGE_ACCOUNT: storage.outputs.name
-      AZURE_STORAGE_CONTAINER: storageContainerName
+      AZURE_STORAGE_CONTAINER: storageDefaultContainerName
       AZURE_SEARCH_INDEX: searchIndexName
       AZURE_SEARCH_SERVICE: searchService.outputs.name
       AZURE_SEARCH_SEMANTIC_RANKER: actualSearchServiceSemanticRankerLevel
@@ -437,12 +438,7 @@ module storage 'core/storage/storage-account.bicep' = {
       enabled: true
       days: 2
     }
-    containers: [
-      {
-        name: storageContainerName
-        publicAccess: 'None'
-      }
-    ]
+    containers: storageContainerNames
   }
 }
 
@@ -633,7 +629,7 @@ output AZURE_SEARCH_SEMANTIC_RANKER string = actualSearchServiceSemanticRankerLe
 output AZURE_SEARCH_SERVICE_ASSIGNED_USERID string = searchService.outputs.principalId
 
 output AZURE_STORAGE_ACCOUNT string = storage.outputs.name
-output AZURE_STORAGE_CONTAINER string = storageContainerName
+output AZURE_STORAGE_CONTAINER string = storageDefaultContainerName
 output AZURE_STORAGE_RESOURCE_GROUP string = storageResourceGroup.name
 
 output AZURE_USE_AUTHENTICATION bool = useAuthentication

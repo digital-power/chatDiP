@@ -22,7 +22,10 @@ class ChatApproach(Approach, ABC):
 
     query_prompt_few_shots = [
         {"role": USER, "content": "How did crypto do last year?"},
-        {"role": ASSISTANT, "content": "Summarize Cryptocurrency Market Dynamics from last year"},
+        {
+            "role": ASSISTANT,
+            "content": "Summarize Cryptocurrency Market Dynamics from last year",
+        },
         {"role": USER, "content": "What are my health plans?"},
         {"role": ASSISTANT, "content": "Show available health plans"},
     ]
@@ -59,11 +62,13 @@ class ChatApproach(Approach, ABC):
     def get_system_prompt(self, override_prompt: Optional[str], follow_up_questions_prompt: str) -> str:
         if override_prompt is None:
             return self.system_message_chat_conversation.format(
-                injected_prompt="", follow_up_questions_prompt=follow_up_questions_prompt
+                injected_prompt="",
+                follow_up_questions_prompt=follow_up_questions_prompt,
             )
         elif override_prompt.startswith(">>>"):
             return self.system_message_chat_conversation.format(
-                injected_prompt=override_prompt[3:] + "\n", follow_up_questions_prompt=follow_up_questions_prompt
+                injected_prompt=override_prompt[3:] + "\n",
+                follow_up_questions_prompt=follow_up_questions_prompt,
             )
         else:
             return override_prompt.format(follow_up_questions_prompt=follow_up_questions_prompt)
@@ -200,7 +205,11 @@ class ChatApproach(Approach, ABC):
             }
 
     async def run(
-        self, messages: list[dict], stream: bool = False, session_state: Any = None, context: dict[str, Any] = {}
+        self,
+        messages: list[dict],
+        stream: bool = False,
+        session_state: Any = None,
+        context: dict[str, Any] = {},
     ) -> Union[dict[str, Any], AsyncGenerator[dict[str, Any], None]]:
         overrides = context.get("overrides", {})
         auth_claims = context.get("auth_claims", {})

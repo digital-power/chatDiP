@@ -36,7 +36,7 @@
       "value": "${AZURE_DOCUMENTINTELLIGENCE_LOCATION}"
     },
     "searchIndexName": {
-      "value": "${AZURE_SEARCH_INDEX=gptkbindex}"
+      "value": "${AZURE_SEARCH_INDEX=content-index}"
     },
     "searchServiceName": {
       "value": "${AZURE_SEARCH_SERVICE}"
@@ -48,7 +48,7 @@
       "value": "${AZURE_SEARCH_SERVICE_LOCATION}"
     },
     "searchServiceSkuName": {
-      "value": "${AZURE_SEARCH_SERVICE_SKU=standard}"
+      "value": "${AZURE_SEARCH_SERVICE_SKU=free}"
     },
     "searchQueryLanguage": {
       "value": "${AZURE_SEARCH_QUERY_LANGUAGE=en-us}"
@@ -67,6 +67,18 @@
     },
     "storageSkuName": {
       "value": "${AZURE_STORAGE_SKU=Standard_LRS}"
+    },
+    "storageContainerNames": {
+      "value": [
+        {
+          "name": "content",
+          "publicAccess": "None"
+        },
+        {
+          "name": "hrdocs",
+          "publicAccess": "None"
+        }
+      ]
     },
     "appServiceSkuName": {
       "value": "${AZURE_APP_SERVICE_SKU=B1}"
