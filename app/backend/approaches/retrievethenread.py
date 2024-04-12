@@ -1,11 +1,12 @@
 import os
-from typing import Any, AsyncGenerator, Optional, Union
+from typing import Any, AsyncGenerator, Dict, Optional, Union
 
 from azure.search.documents.aio import SearchClient
 from azure.search.documents.models import VectorQuery
 from openai import AsyncOpenAI
 
 from approaches.approach import Approach, ThoughtStep
+from approaches.utils import usecase_exists
 from core.authentication import AuthenticationHelper
 from core.messagebuilder import MessageBuilder
 
@@ -45,7 +46,7 @@ info4.pdf: In-network institutions include Overlake, Swedish and others in the r
     def __init__(
         self,
         *,
-        search_client: SearchClient,
+        search_clients: Dict[str, SearchClient],
         auth_helper: AuthenticationHelper,
         openai_client: AsyncOpenAI,
         chatgpt_model: str,
@@ -57,7 +58,7 @@ info4.pdf: In-network institutions include Overlake, Swedish and others in the r
         query_language: str,
         query_speller: str,
     ):
-        self.search_client = search_client
+        self.search_clients = search_clients
         self.chatgpt_deployment = chatgpt_deployment
         self.openai_client = openai_client
         self.auth_helper = auth_helper
@@ -79,6 +80,9 @@ info4.pdf: In-network institutions include Overlake, Swedish and others in the r
     ) -> Union[dict[str, Any], AsyncGenerator[dict[str, Any], None]]:
         q = messages[-1]["content"]
         overrides = context.get("overrides", {})
+        usecase = overrides.get("usecase", "demo")
+        assert usecase_exists(usecase), f"Usecase {usecase} not found"
+
         auth_claims = context.get("auth_claims", {})
         has_text = overrides.get("retrieval_mode") in ["text", "hybrid", None]
         has_vector = overrides.get("retrieval_mode") in ["vectors", "hybrid", None]
@@ -95,7 +99,15 @@ info4.pdf: In-network institutions include Overlake, Swedish and others in the r
         # Only keep the text query if the retrieval mode uses text, otherwise drop it
         query_text = q if has_text else None
 
-        results = await self.search(top, query_text, filter, vectors, use_semantic_ranker, use_semantic_captions)
+        results = await self.search(
+            top,
+            query_text,
+            filter,
+            vectors,
+            use_semantic_ranker,
+            use_semantic_captions,
+            usecase,
+        )
 
         user_content = [q]
 

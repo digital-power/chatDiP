@@ -1,5 +1,5 @@
 import os
-from typing import Any, AsyncGenerator, Awaitable, Callable, Optional, Union
+from typing import Any, AsyncGenerator, Awaitable, Callable, Dict, Optional, Union
 
 from azure.search.documents.aio import SearchClient
 from azure.storage.blob.aio import ContainerClient
@@ -10,6 +10,7 @@ from openai.types.chat import (
 )
 
 from approaches.approach import Approach, ThoughtStep
+from approaches.utils import usecase_exists
 from core.authentication import AuthenticationHelper
 from core.imageshelper import fetch_image
 from core.messagebuilder import MessageBuilder
@@ -40,8 +41,8 @@ class RetrieveThenReadVisionApproach(Approach):
     def __init__(
         self,
         *,
-        search_client: SearchClient,
-        blob_container_client: ContainerClient,
+        search_clients: Dict[str, SearchClient],
+        blob_container_clients: Dict[str, ContainerClient],
         openai_client: AsyncOpenAI,
         auth_helper: AuthenticationHelper,
         gpt4v_deployment: Optional[str],
@@ -53,10 +54,10 @@ class RetrieveThenReadVisionApproach(Approach):
         query_language: str,
         query_speller: str,
         vision_endpoint: str,
-        vision_token_provider: Callable[[], Awaitable[str]]
+        vision_token_provider: Callable[[], Awaitable[str]],
     ):
-        self.search_client = search_client
-        self.blob_container_client = blob_container_client
+        self.search_clients = search_clients
+        self.blob_container_clients = blob_container_clients
         self.openai_client = openai_client
         self.auth_helper = auth_helper
         self.embedding_model = embedding_model
@@ -79,13 +80,24 @@ class RetrieveThenReadVisionApproach(Approach):
     ) -> Union[dict[str, Any], AsyncGenerator[dict[str, Any], None]]:
         q = messages[-1]["content"]
         overrides = context.get("overrides", {})
+        usecase = overrides.get("usecase", "demo")
+        assert usecase_exists(usecase), f"Usecase {usecase} not found"
+
         auth_claims = context.get("auth_claims", {})
         has_text = overrides.get("retrieval_mode") in ["text", "hybrid", None]
         has_vector = overrides.get("retrieval_mode") in ["vectors", "hybrid", None]
         vector_fields = overrides.get("vector_fields", ["embedding"])
 
-        include_gtpV_text = overrides.get("gpt4v_input") in ["textAndImages", "texts", None]
-        include_gtpV_images = overrides.get("gpt4v_input") in ["textAndImages", "images", None]
+        include_gtpV_text = overrides.get("gpt4v_input") in [
+            "textAndImages",
+            "texts",
+            None,
+        ]
+        include_gtpV_images = overrides.get("gpt4v_input") in [
+            "textAndImages",
+            "images",
+            None,
+        ]
 
         use_semantic_captions = True if overrides.get("semantic_captions") and has_text else False
         top = overrides.get("top", 3)
@@ -107,7 +119,15 @@ class RetrieveThenReadVisionApproach(Approach):
         # Only keep the text query if the retrieval mode uses text, otherwise drop it
         query_text = q if has_text else None
 
-        results = await self.search(top, query_text, filter, vectors, use_semantic_ranker, use_semantic_captions)
+        results = await self.search(
+            top,
+            query_text,
+            filter,
+            vectors,
+            use_semantic_ranker,
+            use_semantic_captions,
+            usecase,
+        )
 
         image_list: list[ChatCompletionContentPartImageParam] = []
         user_content: list[ChatCompletionContentPartParam] = [{"text": q, "type": "text"}]
@@ -125,7 +145,7 @@ class RetrieveThenReadVisionApproach(Approach):
             user_content.append({"text": content, "type": "text"})
         if include_gtpV_images:
             for result in results:
-                url = await fetch_image(self.blob_container_client, result)
+                url = await fetch_image(self.blob_container_clients[usecase], result)
                 if url:
                     image_list.append({"image_url": url, "type": "image_url"})
             user_content.extend(image_list)
@@ -154,7 +174,10 @@ class RetrieveThenReadVisionApproach(Approach):
                 ThoughtStep(
                     "Search Query",
                     query_text,
-                    {"use_semantic_captions": use_semantic_captions, "vector_fields": vector_fields},
+                    {
+                        "use_semantic_captions": use_semantic_captions,
+                        "vector_fields": vector_fields,
+                    },
                 ),
                 ThoughtStep("Results", [result.serialize_for_results() for result in results]),
                 ThoughtStep("Prompt", [str(message) for message in message_builder.messages]),

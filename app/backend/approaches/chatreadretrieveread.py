@@ -1,4 +1,4 @@
-from typing import Any, Coroutine, List, Literal, Optional, Union, overload
+from typing import Any, Coroutine, Dict, List, Literal, Optional, Union, overload
 
 from azure.search.documents.aio import SearchClient
 from azure.search.documents.models import VectorQuery
@@ -11,6 +11,7 @@ from openai.types.chat import (
 
 from approaches.approach import ThoughtStep
 from approaches.chatapproach import ChatApproach
+from approaches.utils import usecase_exists
 from core.authentication import AuthenticationHelper
 from core.modelhelper import get_token_limit
 
@@ -25,7 +26,7 @@ class ChatReadRetrieveReadApproach(ChatApproach):
     def __init__(
         self,
         *,
-        search_client: SearchClient,
+        search_clients: Dict[str, SearchClient],
         auth_helper: AuthenticationHelper,
         openai_client: AsyncOpenAI,
         chatgpt_model: str,
@@ -37,7 +38,7 @@ class ChatReadRetrieveReadApproach(ChatApproach):
         query_language: str,
         query_speller: str,
     ):
-        self.search_client = search_client
+        self.search_clients = search_clients
         self.openai_client = openai_client
         self.auth_helper = auth_helper
         self.chatgpt_model = chatgpt_model
@@ -84,7 +85,13 @@ class ChatReadRetrieveReadApproach(ChatApproach):
         overrides: dict[str, Any],
         auth_claims: dict[str, Any],
         should_stream: bool = False,
-    ) -> tuple[dict[str, Any], Coroutine[Any, Any, Union[ChatCompletion, AsyncStream[ChatCompletionChunk]]]]:
+    ) -> tuple[
+        dict[str, Any],
+        Coroutine[Any, Any, Union[ChatCompletion, AsyncStream[ChatCompletionChunk]]],
+    ]:
+        usecase = overrides.get("usecase", "demo")
+        assert usecase_exists(usecase), f"Usecase {usecase} not found"
+
         has_text = overrides.get("retrieval_mode") in ["text", "hybrid", None]
         has_vector = overrides.get("retrieval_mode") in ["vectors", "hybrid", None]
         use_semantic_captions = True if overrides.get("semantic_captions") and has_text else False
@@ -149,7 +156,15 @@ class ChatReadRetrieveReadApproach(ChatApproach):
         if not has_text:
             query_text = None
 
-        results = await self.search(top, query_text, filter, vectors, use_semantic_ranker, use_semantic_captions)
+        results = await self.search(
+            top,
+            query_text,
+            filter,
+            vectors,
+            use_semantic_ranker,
+            use_semantic_captions,
+            usecase,
+        )
 
         sources_content = self.get_sources_content(results, use_semantic_captions, use_image_citation=False)
         content = "\n".join(sources_content)
@@ -185,7 +200,10 @@ class ChatReadRetrieveReadApproach(ChatApproach):
                 ThoughtStep(
                     "Generated search query",
                     query_text,
-                    {"use_semantic_captions": use_semantic_captions, "has_vector": has_vector},
+                    {
+                        "use_semantic_captions": use_semantic_captions,
+                        "has_vector": has_vector,
+                    },
                 ),
                 ThoughtStep("Results", [result.serialize_for_results() for result in results]),
                 ThoughtStep("Prompt", [str(message) for message in messages]),

@@ -9,7 +9,7 @@ from approaches.chatreadretrieveread import ChatReadRetrieveReadApproach
 @pytest.fixture
 def chat_approach():
     return ChatReadRetrieveReadApproach(
-        search_client=None,
+        search_clients=None,
         auth_helper=None,
         openai_client=None,
         chatgpt_model="gpt-35-turbo",

@@ -29,8 +29,10 @@ import { VectorSettings } from "../../components/VectorSettings";
 import { useMsal } from "@azure/msal-react";
 import { TokenClaimsDisplay } from "../../components/TokenClaimsDisplay";
 import { GPT4VSettings } from "../../components/GPT4VSettings";
+import { useOutletContext } from "react-router-dom";
+import cfg from "../../../../backend/approaches/config/config_approaches.json";
 
-const Chat = () => {
+const Chat = (config: typeof cfg) => {
     const defaultPromptTemplate = [
         "Assistant helps the company employees with their questions. Be brief in your answers.",
         "Answer ONLY with the facts listed in the list of sources below. If there isn't enough information below, say you don't know.",
@@ -39,11 +41,15 @@ const Chat = () => {
         "Each source has a name followed by colon and the actual information, always include the source name for each fact you use in the response.",
         "Use square brackets to reference the source, for example [info1.txt]. Don't combine sources, list each source separately, for example [info1.txt][info2.pdf]."
     ].join(" ");
+    const configArray = Object.values(config);
+    type Usecase = (typeof configArray)[0];
 
-    const [isConfigPanelOpen, setIsConfigPanelOpen] = useState(false);
+    // const [isConfigPanelOpen, setIsConfigPanelOpen] = useState(false);
+    const [isConfigPanelOpen, setIsConfigPanelOpen, currentUsecase] = useOutletContext<[boolean, (arg: boolean) => void, Usecase]>();
     const [promptTemplate, setPromptTemplate] = useState<string>(defaultPromptTemplate);
     const [temperature, setTemperature] = useState<number>(0.3);
     const [retrieveCount, setRetrieveCount] = useState<number>(3);
+    const [retrieveUsecase, setRetrieveUsecase] = useState<string>(currentUsecase?.id);
     const [retrievalMode, setRetrievalMode] = useState<RetrievalMode>(RetrievalMode.Hybrid);
     const [useSemanticRanker, setUseSemanticRanker] = useState<boolean>(true);
     const [shouldStream, setShouldStream] = useState<boolean>(true);
@@ -72,6 +78,14 @@ const Chat = () => {
     const [showGPT4VOptions, setShowGPT4VOptions] = useState<boolean>(false);
     const [showSemanticRankerOption, setShowSemanticRankerOption] = useState<boolean>(false);
     const [showVectorOption, setShowVectorOption] = useState<boolean>(false);
+
+    useEffect(() => {
+        // Reset state when usecase_id changes
+        clearChat();
+
+        // Use case needs to be set to current usecase id
+        setRetrieveUsecase(currentUsecase?.id);
+    }, [currentUsecase?.id]);
 
     const getConfig = async () => {
         const token = client ? await getToken(client) : undefined;
@@ -158,6 +172,7 @@ const Chat = () => {
                         top: retrieveCount,
                         temperature: temperature,
                         retrieval_mode: retrievalMode,
+                        usecase: retrieveUsecase,
                         semantic_ranker: useSemanticRanker,
                         semantic_captions: useSemanticCaptions,
                         suggest_followup_questions: useSuggestFollowupQuestions,
@@ -299,7 +314,7 @@ const Chat = () => {
                             />
                             <h1 className={styles.chatEmptyStateTitle}>Chat with your data</h1>
                             <h2 className={styles.chatEmptyStateSubtitle}>Ask anything or try an example</h2>
-                            <ExampleList onExampleClicked={onExampleClicked} useGPT4V={useGPT4V} />
+                            <ExampleList onExampleClicked={onExampleClicked} currentUsecase={currentUsecase} />
                         </div>
                     ) : (
                         <div className={styles.chatMessageStream}>

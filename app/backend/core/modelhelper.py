@@ -17,7 +17,11 @@ MODELS_2_TOKEN_LIMITS = {
 }
 
 
-AOAI_2_OAI = {"gpt-35-turbo": "gpt-3.5-turbo", "gpt-35-turbo-16k": "gpt-3.5-turbo-16k", "gpt-4v": "gpt-4-turbo-vision"}
+AOAI_2_OAI = {
+    "gpt-35-turbo": "gpt-3.5-turbo",
+    "gpt-35-turbo-16k": "gpt-3.5-turbo-16k",
+    "gpt-4v": "gpt-4-turbo-vision",
+}
 
 
 def get_token_limit(model_id: str) -> int:

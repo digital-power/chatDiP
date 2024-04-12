@@ -1,7 +1,17 @@
 import os
 from abc import ABC
 from dataclasses import dataclass
-from typing import Any, AsyncGenerator, Awaitable, Callable, List, Optional, Union, cast
+from typing import (
+    Any,
+    AsyncGenerator,
+    Awaitable,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    Union,
+    cast,
+)
 from urllib.parse import urljoin
 
 import aiohttp
@@ -79,7 +89,7 @@ class ThoughtStep:
 class Approach(ABC):
     def __init__(
         self,
-        search_client: SearchClient,
+        search_clients: Dict[str, SearchClient],
         openai_client: AsyncOpenAI,
         auth_helper: AuthenticationHelper,
         query_language: Optional[str],
@@ -90,7 +100,7 @@ class Approach(ABC):
         vision_endpoint: str,
         vision_token_provider: Callable[[], Awaitable[str]],
     ):
-        self.search_client = search_client
+        self.search_clients = search_clients
         self.openai_client = openai_client
         self.auth_helper = auth_helper
         self.query_language = query_language
@@ -119,10 +129,11 @@ class Approach(ABC):
         vectors: List[VectorQuery],
         use_semantic_ranker: bool,
         use_semantic_captions: bool,
+        usecase: str,
     ) -> List[Document]:
         # Use semantic ranker if requested and if retrieval mode is text or hybrid (vectors + text)
         if use_semantic_ranker and query_text:
-            results = await self.search_client.search(
+            results = await self.search_clients[usecase].search(
                 search_text=query_text,
                 filter=filter,
                 query_type=QueryType.SEMANTIC,
@@ -134,8 +145,11 @@ class Approach(ABC):
                 vector_queries=vectors,
             )
         else:
-            results = await self.search_client.search(
-                search_text=query_text or "", filter=filter, top=top, vector_queries=vectors
+            results = await self.search_clients[usecase].search(
+                search_text=query_text or "",
+                filter=filter,
+                top=top,
+                vector_queries=vectors,
             )
 
         documents = []
@@ -158,7 +172,10 @@ class Approach(ABC):
         return documents
 
     def get_sources_content(
-        self, results: List[Document], use_semantic_captions: bool, use_image_citation: bool
+        self,
+        results: List[Document],
+        use_semantic_captions: bool,
+        use_image_citation: bool,
     ) -> list[str]:
         if use_semantic_captions:
             return [
@@ -204,13 +221,21 @@ class Approach(ABC):
 
         async with aiohttp.ClientSession() as session:
             async with session.post(
-                url=endpoint, params=params, headers=headers, json=data, raise_for_status=True
+                url=endpoint,
+                params=params,
+                headers=headers,
+                json=data,
+                raise_for_status=True,
             ) as response:
                 json = await response.json()
                 image_query_vector = json["vector"]
         return VectorizedQuery(vector=image_query_vector, k_nearest_neighbors=50, fields="imageEmbedding")
 
     async def run(
-        self, messages: list[dict], stream: bool = False, session_state: Any = None, context: dict[str, Any] = {}
+        self,
+        messages: list[dict],
+        stream: bool = False,
+        session_state: Any = None,
+        context: dict[str, Any] = {},
     ) -> Union[dict[str, Any], AsyncGenerator[dict[str, Any], None]]:
         raise NotImplementedError

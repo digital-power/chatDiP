@@ -36,7 +36,7 @@ def openai_client():
 @pytest.fixture
 def chat_approach(openai_client, mock_confidential_client_success):
     return ChatReadRetrieveReadVisionApproach(
-        search_client=None,
+        search_clients=None,
         openai_client=openai_client,
         auth_helper=AuthenticationHelper(
             search_index=MockSearchIndex,
@@ -47,7 +47,7 @@ def chat_approach(openai_client, mock_confidential_client_success):
             tenant_id="TENANT_ID",
             require_access_control=None,
         ),
-        blob_container_client=None,
+        blob_container_clients=None,
         vision_endpoint="endpoint",
         vision_token_provider=lambda: "token",
         gpt4v_deployment="gpt-4v",

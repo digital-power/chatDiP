@@ -1,4 +1,4 @@
-from typing import Any, Awaitable, Callable, Coroutine, Optional, Union
+from typing import Any, Awaitable, Callable, Coroutine, Dict, Optional, Union
 
 from azure.search.documents.aio import SearchClient
 from azure.storage.blob.aio import ContainerClient
@@ -12,6 +12,7 @@ from openai.types.chat import (
 
 from approaches.approach import ThoughtStep
 from approaches.chatapproach import ChatApproach
+from approaches.utils import usecase_exists
 from core.authentication import AuthenticationHelper
 from core.imageshelper import fetch_image
 from core.modelhelper import get_token_limit
@@ -27,8 +28,8 @@ class ChatReadRetrieveReadVisionApproach(ChatApproach):
     def __init__(
         self,
         *,
-        search_client: SearchClient,
-        blob_container_client: ContainerClient,
+        search_clients: Dict[str, SearchClient],
+        blob_container_clients: Dict[str, ContainerClient],
         openai_client: AsyncOpenAI,
         auth_helper: AuthenticationHelper,
         gpt4v_deployment: Optional[str],  # Not needed for non-Azure OpenAI
@@ -40,10 +41,10 @@ class ChatReadRetrieveReadVisionApproach(ChatApproach):
         query_language: str,
         query_speller: str,
         vision_endpoint: str,
-        vision_token_provider: Callable[[], Awaitable[str]]
+        vision_token_provider: Callable[[], Awaitable[str]],
     ):
-        self.search_client = search_client
-        self.blob_container_client = blob_container_client
+        self.search_clients = search_clients
+        self.blob_container_clients = blob_container_clients
         self.openai_client = openai_client
         self.auth_helper = auth_helper
         self.gpt4v_deployment = gpt4v_deployment
@@ -81,7 +82,13 @@ class ChatReadRetrieveReadVisionApproach(ChatApproach):
         overrides: dict[str, Any],
         auth_claims: dict[str, Any],
         should_stream: bool = False,
-    ) -> tuple[dict[str, Any], Coroutine[Any, Any, Union[ChatCompletion, AsyncStream[ChatCompletionChunk]]]]:
+    ) -> tuple[
+        dict[str, Any],
+        Coroutine[Any, Any, Union[ChatCompletion, AsyncStream[ChatCompletionChunk]]],
+    ]:
+        usecase = overrides.get("usecase", "demo")
+        assert usecase_exists(usecase), f"Usecase {usecase} not found"
+
         has_text = overrides.get("retrieval_mode") in ["text", "hybrid", None]
         has_vector = overrides.get("retrieval_mode") in ["vectors", "hybrid", None]
         vector_fields = overrides.get("vector_fields", ["embedding"])
@@ -90,8 +97,16 @@ class ChatReadRetrieveReadVisionApproach(ChatApproach):
         filter = self.build_filter(overrides, auth_claims)
         use_semantic_ranker = True if overrides.get("semantic_ranker") and has_text else False
 
-        include_gtpV_text = overrides.get("gpt4v_input") in ["textAndImages", "texts", None]
-        include_gtpV_images = overrides.get("gpt4v_input") in ["textAndImages", "images", None]
+        include_gtpV_text = overrides.get("gpt4v_input") in [
+            "textAndImages",
+            "texts",
+            None,
+        ]
+        include_gtpV_images = overrides.get("gpt4v_input") in [
+            "textAndImages",
+            "images",
+            None,
+        ]
 
         original_user_query = history[-1]["content"]
 
@@ -134,7 +149,15 @@ class ChatReadRetrieveReadVisionApproach(ChatApproach):
         if not has_text:
             query_text = None
 
-        results = await self.search(top, query_text, filter, vectors, use_semantic_ranker, use_semantic_captions)
+        results = await self.search(
+            top,
+            query_text,
+            filter,
+            vectors,
+            use_semantic_ranker,
+            use_semantic_captions,
+            usecase,
+        )
         sources_content = self.get_sources_content(results, use_semantic_captions, use_image_citation=True)
         content = "\n".join(sources_content)
 
@@ -156,7 +179,7 @@ class ChatReadRetrieveReadVisionApproach(ChatApproach):
             user_content.append({"text": "\n\nSources:\n" + content, "type": "text"})
         if include_gtpV_images:
             for result in results:
-                url = await fetch_image(self.blob_container_client, result)
+                url = await fetch_image(self.blob_container_clients[usecase], result)
                 if url:
                     image_list.append({"image_url": url, "type": "image_url"})
             user_content.extend(image_list)
@@ -184,7 +207,10 @@ class ChatReadRetrieveReadVisionApproach(ChatApproach):
                 ThoughtStep(
                     "Generated search query",
                     query_text,
-                    {"use_semantic_captions": use_semantic_captions, "vector_fields": vector_fields},
+                    {
+                        "use_semantic_captions": use_semantic_captions,
+                        "vector_fields": vector_fields,
+                    },
                 ),
                 ThoughtStep("Results", [result.serialize_for_results() for result in results]),
                 ThoughtStep("Prompt", [str(message) for message in messages]),

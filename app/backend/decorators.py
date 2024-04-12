@@ -4,21 +4,25 @@ from typing import Any, Callable, Dict
 
 from quart import abort, current_app, request
 
-from config import CONFIG_AUTH_CLIENT, CONFIG_SEARCH_CLIENT
+from approaches.utils import usecase_exists
+from config import CONFIG_AUTH_CLIENT, CONFIG_SEARCH_CLIENTS
 from core.authentication import AuthError
 from error import error_response
 
 
-def authenticated_path(route_fn: Callable[[str], Any]):
+def authenticated_path(route_fn: Callable[[str, str], Any]):
     """
     Decorator for routes that request a specific file that might require access control enforcement
     """
 
     @wraps(route_fn)
-    async def auth_handler(path=""):
+    async def auth_handler(usecase: str, path=""):
+        # Check if usecase is valid
+        assert usecase_exists(usecase), f"Usecase {usecase} does not exist"
+
         # If authentication is enabled, validate the user can access the file
         auth_helper = current_app.config[CONFIG_AUTH_CLIENT]
-        search_client = current_app.config[CONFIG_SEARCH_CLIENT]
+        search_client = current_app.config[CONFIG_SEARCH_CLIENTS][usecase]
         authorized = False
         try:
             auth_claims = await auth_helper.get_auth_claims_if_enabled(request.headers)
@@ -32,7 +36,7 @@ def authenticated_path(route_fn: Callable[[str], Any]):
         if not authorized:
             abort(403)
 
-        return await route_fn(path)
+        return await route_fn(usecase, path)
 
     return auth_handler
 

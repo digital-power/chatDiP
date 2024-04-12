@@ -31,7 +31,12 @@ class MessageBuilder:
         ]
         self.model = chatgpt_model
 
-    def insert_message(self, role: str, content: Union[str, List[ChatCompletionContentPartParam]], index: int = 1):
+    def insert_message(
+        self,
+        role: str,
+        content: Union[str, List[ChatCompletionContentPartParam]],
+        index: int = 1,
+    ):
         """
         Inserts a message into the conversation at the specified index,
         or at index 1 (after system message) if no index is specified.
