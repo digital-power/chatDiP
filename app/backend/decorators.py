@@ -5,7 +5,7 @@ from typing import Any, Callable, Dict
 from quart import abort, current_app, request
 
 from approaches.utils import usecase_exists
-from config import CONFIG_AUTH_CLIENT, CONFIG_SEARCH_CLIENT
+from config import CONFIG_AUTH_CLIENT, CONFIG_SEARCH_CLIENTS
 from core.authentication import AuthError
 from error import error_response
 
@@ -22,7 +22,7 @@ def authenticated_path(route_fn: Callable[[str, str], Any]):
 
         # If authentication is enabled, validate the user can access the file
         auth_helper = current_app.config[CONFIG_AUTH_CLIENT]
-        search_client = current_app.config[CONFIG_SEARCH_CLIENT]
+        search_client = current_app.config[CONFIG_SEARCH_CLIENTS][usecase]
         authorized = False
         try:
             auth_claims = await auth_helper.get_auth_claims_if_enabled(request.headers)

@@ -46,13 +46,11 @@ from config import (
     CONFIG_ASK_APPROACH,
     CONFIG_ASK_VISION_APPROACH,
     CONFIG_AUTH_CLIENT,
-    CONFIG_BLOB_CONTAINER_CLIENT,
     CONFIG_BLOB_CONTAINER_CLIENTS,
     CONFIG_CHAT_APPROACH,
     CONFIG_CHAT_VISION_APPROACH,
     CONFIG_GPT4V_DEPLOYED,
     CONFIG_OPENAI_CLIENT,
-    CONFIG_SEARCH_CLIENT,
     CONFIG_SEARCH_CLIENTS,
     CONFIG_SEMANTIC_RANKER_DEPLOYED,
     CONFIG_VECTOR_SEARCH_ENABLED,
@@ -229,7 +227,6 @@ async def _build_usecase_clients(
 async def setup_clients():
     # Replace these with your own values, either in environment variables or directly here
     AZURE_STORAGE_ACCOUNT = os.environ["AZURE_STORAGE_ACCOUNT"]
-    AZURE_STORAGE_CONTAINER = os.environ["AZURE_STORAGE_CONTAINER"]
     AZURE_SEARCH_SERVICE = os.environ["AZURE_SEARCH_SERVICE"]
     AZURE_SEARCH_INDEX = os.environ["AZURE_SEARCH_INDEX"]
     SEARCH_SECRET_NAME = os.getenv("SEARCH_SECRET_NAME")
@@ -288,11 +285,7 @@ async def setup_clients():
     search_credential: Union[AsyncTokenCredential, AzureKeyCredential] = (
         AzureKeyCredential(search_key) if search_key else azure_credential
     )
-    search_client = SearchClient(
-        endpoint=f"https://{AZURE_SEARCH_SERVICE}.search.windows.net",
-        index_name=AZURE_SEARCH_INDEX,
-        credential=search_credential,
-    )
+
     search_index_client = SearchIndexClient(
         endpoint=f"https://{AZURE_SEARCH_SERVICE}.search.windows.net",
         credential=search_credential,
@@ -302,7 +295,6 @@ async def setup_clients():
         account_url=f"https://{AZURE_STORAGE_ACCOUNT}.blob.core.windows.net",
         credential=azure_credential,
     )
-    blob_container_client = blob_client.get_container_client(AZURE_STORAGE_CONTAINER)
 
     # Set up search and blob clients for the different use cases
     search_clients, blob_container_clients = await _build_usecase_clients(
@@ -351,9 +343,7 @@ async def setup_clients():
         )
 
     current_app.config[CONFIG_OPENAI_CLIENT] = openai_client
-    current_app.config[CONFIG_SEARCH_CLIENT] = search_client
     current_app.config[CONFIG_SEARCH_CLIENTS] = search_clients
-    current_app.config[CONFIG_BLOB_CONTAINER_CLIENT] = blob_container_client
     current_app.config[CONFIG_BLOB_CONTAINER_CLIENTS] = blob_container_clients
     current_app.config[CONFIG_AUTH_CLIENT] = auth_helper
 
@@ -432,8 +422,6 @@ async def setup_clients():
 @bp.after_app_serving
 async def close_clients():
     await current_app.config[CONFIG_OPENAI_CLIENT].close()
-    await current_app.config[CONFIG_SEARCH_CLIENT].close()
-    await current_app.config[CONFIG_BLOB_CONTAINER_CLIENT].close()
 
     for search_client in current_app.config[CONFIG_SEARCH_CLIENTS].values():
         await search_client.close()
