@@ -36,7 +36,7 @@ def authenticated_path(route_fn: Callable[[str, str, dict[str, Any]], Any]):
         if not authorized:
             abort(403)
 
-        return await route_fn(path, auth_claims)
+        return await route_fn(usecase, path, auth_claims)
 
     return auth_handler
 

@@ -562,6 +562,7 @@ async def setup_clients():
         chatgpt_deployment=AZURE_OPENAI_CHATGPT_DEPLOYMENT,
         embedding_model=OPENAI_EMB_MODEL,
         embedding_deployment=AZURE_OPENAI_EMB_DEPLOYMENT,
+        embedding_dimensions=OPENAI_EMB_DIMENSIONS,
         sourcepage_field=KB_FIELDS_SOURCEPAGE,
         content_field=KB_FIELDS_CONTENT,
         query_language=AZURE_SEARCH_QUERY_LANGUAGE,
