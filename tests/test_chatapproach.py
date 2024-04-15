@@ -330,7 +330,7 @@ async def test_search_results_filtering_by_scores(
 ):
 
     chat_approach = ChatReadRetrieveReadApproach(
-        search_client=SearchClient(endpoint="", index_name="", credential=AzureKeyCredential("")),
+        search_clients=SearchClient(endpoint="", index_name="", credential=AzureKeyCredential("")),
         auth_helper=None,
         openai_client=None,
         chatgpt_model="gpt-35-turbo",
