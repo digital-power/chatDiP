@@ -10,7 +10,7 @@ from core.authentication import AuthError
 from error import error_response
 
 
-def authenticated_path(route_fn: Callable[[str, Dict[str, Any]], Any]):
+def authenticated_path(route_fn: Callable[[str, str, dict[str, Any]], Any]):
     """
     Decorator for routes that request a specific file that might require access control enforcement
     """
@@ -36,7 +36,7 @@ def authenticated_path(route_fn: Callable[[str, Dict[str, Any]], Any]):
         if not authorized:
             abort(403)
 
-        return await route_fn(usecase, path, auth_claims)
+        return await route_fn(path, auth_claims)
 
     return auth_handler
 
