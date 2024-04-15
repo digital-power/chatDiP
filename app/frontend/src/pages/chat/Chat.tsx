@@ -24,6 +24,7 @@ import { UserChatMessage } from "../../components/UserChatMessage";
 import { AnalysisPanel, AnalysisPanelTabs } from "../../components/AnalysisPanel";
 import { SettingsButton } from "../../components/SettingsButton";
 import { ClearChatButton } from "../../components/ClearChatButton";
+import { UploadFile } from "../../components/UploadFile";
 import { useLogin, getToken, isLoggedIn, requireAccessControl } from "../../authConfig";
 import { VectorSettings } from "../../components/VectorSettings";
 import { useMsal } from "@azure/msal-react";
@@ -48,6 +49,8 @@ const Chat = (config: typeof cfg) => {
     const [isConfigPanelOpen, setIsConfigPanelOpen, currentUsecase] = useOutletContext<[boolean, (arg: boolean) => void, Usecase]>();
     const [promptTemplate, setPromptTemplate] = useState<string>(defaultPromptTemplate);
     const [temperature, setTemperature] = useState<number>(0.3);
+    const [minimumRerankerScore, setMinimumRerankerScore] = useState<number>(0);
+    const [minimumSearchScore, setMinimumSearchScore] = useState<number>(0);
     const [retrieveCount, setRetrieveCount] = useState<number>(3);
     const [retrieveUsecase, setRetrieveUsecase] = useState<string>(currentUsecase?.id);
     const [retrievalMode, setRetrievalMode] = useState<RetrievalMode>(RetrievalMode.Hybrid);
@@ -78,6 +81,7 @@ const Chat = (config: typeof cfg) => {
     const [showGPT4VOptions, setShowGPT4VOptions] = useState<boolean>(false);
     const [showSemanticRankerOption, setShowSemanticRankerOption] = useState<boolean>(false);
     const [showVectorOption, setShowVectorOption] = useState<boolean>(false);
+    const [showUserUpload, setShowUserUpload] = useState<boolean>(false);
 
     useEffect(() => {
         // Reset state when usecase_id changes
@@ -88,9 +92,7 @@ const Chat = (config: typeof cfg) => {
     }, [currentUsecase?.id]);
 
     const getConfig = async () => {
-        const token = client ? await getToken(client) : undefined;
-
-        configApi(token).then(config => {
+        configApi().then(config => {
             setShowGPT4VOptions(config.showGPT4VOptions);
             setUseSemanticRanker(config.showSemanticRankerOption);
             setShowSemanticRankerOption(config.showSemanticRankerOption);
@@ -98,6 +100,7 @@ const Chat = (config: typeof cfg) => {
             if (!config.showVectorOption) {
                 setRetrievalMode(RetrievalMode.Text);
             }
+            setShowUserUpload(config.showUserUpload);
         });
     };
 
@@ -171,6 +174,8 @@ const Chat = (config: typeof cfg) => {
                         exclude_category: excludeCategory.length === 0 ? undefined : excludeCategory,
                         top: retrieveCount,
                         temperature: temperature,
+                        minimum_reranker_score: minimumRerankerScore,
+                        minimum_search_score: minimumSearchScore,
                         retrieval_mode: retrievalMode,
                         usecase: retrieveUsecase,
                         semantic_ranker: useSemanticRanker,
@@ -237,6 +242,14 @@ const Chat = (config: typeof cfg) => {
         setTemperature(newValue);
     };
 
+    const onMinimumSearchScoreChange = (_ev?: React.SyntheticEvent<HTMLElement, Event>, newValue?: string) => {
+        setMinimumSearchScore(parseFloat(newValue || "0"));
+    };
+
+    const onMinimumRerankerScoreChange = (_ev?: React.SyntheticEvent<HTMLElement, Event>, newValue?: string) => {
+        setMinimumRerankerScore(parseFloat(newValue || "0"));
+    };
+
     const onRetrieveCountChange = (_ev?: React.SyntheticEvent<HTMLElement, Event>, newValue?: string) => {
         setRetrieveCount(parseInt(newValue || "3"));
     };
@@ -298,6 +311,7 @@ const Chat = (config: typeof cfg) => {
         <div className={styles.container}>
             <div className={styles.commandsContainer}>
                 <ClearChatButton className={styles.commandButton} onClick={clearChat} disabled={!lastQuestionRef.current || isLoading} />
+                {showUserUpload && <UploadFile className={styles.commandButton} disabled={!isLoggedIn(client)} />}
                 <SettingsButton className={styles.commandButton} onClick={() => setIsConfigPanelOpen(!isConfigPanelOpen)} />
             </div>
             <div className={styles.chatRoot}>
@@ -420,6 +434,25 @@ const Chat = (config: typeof cfg) => {
                         onChange={onTemperatureChange}
                         showValue
                         snapToStep
+                    />
+
+                    <SpinButton
+                        className={styles.chatSettingsSeparator}
+                        label="Minimum search score"
+                        min={0}
+                        step={0.01}
+                        defaultValue={minimumSearchScore.toString()}
+                        onChange={onMinimumSearchScoreChange}
+                    />
+
+                    <SpinButton
+                        className={styles.chatSettingsSeparator}
+                        label="Minimum reranker score"
+                        min={1}
+                        max={4}
+                        step={0.1}
+                        defaultValue={minimumRerankerScore.toString()}
+                        onChange={onMinimumRerankerScoreChange}
                     />
 
                     <SpinButton
