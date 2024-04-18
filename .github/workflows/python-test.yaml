@@ -56,6 +56,8 @@ jobs:
             python3 -m mypy . --config-file=../../pyproject.toml
         - name: Check formatting with black
           run: black . --check --verbose
+        - name: Check Network Connectivity
+          run: ping -c 5 ppa.launchpad.net
         - name: Run Python tests
           if: runner.os != 'Windows'
           run: python3 -m pytest -s -vv --cov --cov-fail-under=70
@@ -63,7 +65,6 @@ jobs:
           id: e2e
           if: runner.os != 'Windows'
           run: |
-            sudo apt-get update
             playwright install --with-deps
             python3 -m pytest tests/e2e.py --tracing=retain-on-failure
         - name: Upload test artifacts
