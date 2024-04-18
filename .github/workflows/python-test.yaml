@@ -63,6 +63,7 @@ jobs:
           id: e2e
           if: runner.os != 'Windows'
           run: |
+            sudo apt-get update
             playwright install --with-deps
             python3 -m pytest tests/e2e.py --tracing=retain-on-failure
         - name: Upload test artifacts
