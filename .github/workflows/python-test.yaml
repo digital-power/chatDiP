@@ -56,11 +56,9 @@ jobs:
             python3 -m mypy . --config-file=../../pyproject.toml
         - name: Check formatting with black
           run: black . --check --verbose
-        - name: Check Network Connectivity
-          run: ping -c 5 ppa.launchpad.net
         - name: Run Python tests
           if: runner.os != 'Windows'
-          run: python3 -m pytest -s -vv --cov --cov-fail-under=70
+          run: python3 -m pytest -s -vv --cov --cov-fail-under=80
         - name: Run E2E tests with Playwright
           id: e2e
           if: runner.os != 'Windows'
