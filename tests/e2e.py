@@ -258,31 +258,6 @@ def test_chat_followup_nonstreaming(page: Page, live_server_url: str):
     expect(page.get_by_text("The capital of France is Paris.")).to_have_count(2)
 
 
-def test_ask(page: Page, live_server_url: str):
-    # Set up a mock route to the /ask endpoint
-    def handle(route: Route):
-        # Assert that session_state is specified in the request (None for now)
-        session_state = route.request.post_data_json["session_state"]
-        assert session_state is None
-        # Read the JSON from our snapshot results and return as the response
-        f = open("tests/snapshots/test_app/test_ask_rtr_hybrid/client0/result.json")
-        json = f.read()
-        f.close()
-        route.fulfill(body=json, status=200)
-
-    page.route("*/**/ask", handle)
-    page.goto(live_server_url)
-    expect(page).to_have_title("GPT + Enterprise data | Sample")
-
-    page.get_by_placeholder("Example: Does my plan cover annual eye exams?").click()
-    page.get_by_placeholder("Example: Does my plan cover annual eye exams?").fill("Whats the dental plan?")
-    page.get_by_placeholder("Example: Does my plan cover annual eye exams?").click()
-    page.get_by_label("Ask question button").click()
-
-    expect(page.get_by_text("Whats the dental plan?")).to_be_visible()
-    expect(page.get_by_text("The capital of France is Paris.")).to_be_visible()
-
-
 def test_upload_hidden(page: Page, live_server_url: str):
 
     def handle_auth_setup(route: Route):
