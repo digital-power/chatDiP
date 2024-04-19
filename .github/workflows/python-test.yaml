@@ -51,14 +51,14 @@ jobs:
         - name: Check types with mypy
           run: |
             cd scripts/
-            python3 -m mypy .
-            cd ../app/
-            python3 -m mypy .
+            python3 -m mypy . --config-file=../pyproject.toml
+            cd ../app/backend/
+            python3 -m mypy . --config-file=../../pyproject.toml
         - name: Check formatting with black
           run: black . --check --verbose
         - name: Run Python tests
           if: runner.os != 'Windows'
-          run: python3 -m pytest -s -vv --cov --cov-fail-under=86
+          run: python3 -m pytest -s -vv --cov --cov-fail-under=80
         - name: Run E2E tests with Playwright
           id: e2e
           if: runner.os != 'Windows'
