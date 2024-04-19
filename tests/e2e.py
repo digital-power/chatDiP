@@ -274,7 +274,6 @@ def test_ask(page: Page, live_server_url: str):
     page.goto(live_server_url)
     expect(page).to_have_title("GPT + Enterprise data | Sample")
 
-    page.get_by_role("link", name="Ask a question").click()
     page.get_by_placeholder("Example: Does my plan cover annual eye exams?").click()
     page.get_by_placeholder("Example: Does my plan cover annual eye exams?").fill("Whats the dental plan?")
     page.get_by_placeholder("Example: Does my plan cover annual eye exams?").click()
