@@ -1,4 +1,4 @@
-import { Stack, Pivot, PivotItem } from "@fluentui/react";
+import { Stack, Pivot, PivotItem, IPivotStyles } from "@fluentui/react";
 
 import styles from "./AnalysisPanel.module.css";
 
