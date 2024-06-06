@@ -2,14 +2,12 @@ import { useMemo } from "react";
 import { Stack, IconButton } from "@fluentui/react";
 import DOMPurify from "dompurify";
 
-import ThoughtProcessIcon from "../../assets/thought_process.svg";
-import SupportingContentIcon from "../../assets/supporting_content.svg";
-
 import styles from "./Answer.module.css";
-
 import { ChatAppResponse, getCitationFilePath } from "../../api";
 import { parseAnswerToHtml } from "./AnswerParser";
 import { AnswerIcon } from "./AnswerIcon";
+import { SpeechOutputBrowser } from "./SpeechOutputBrowser";
+import { SpeechOutputAzure } from "./SpeechOutputAzure";
 
 interface Props {
     answer: ChatAppResponse;
@@ -20,6 +18,9 @@ interface Props {
     onSupportingContentClicked: () => void;
     onFollowupQuestionClicked?: (question: string) => void;
     showFollowupQuestions?: boolean;
+    showSpeechOutputBrowser?: boolean;
+    showSpeechOutputAzure?: boolean;
+    speechUrl: string | null;
 }
 
 export const Answer = ({
@@ -30,10 +31,13 @@ export const Answer = ({
     onThoughtProcessClicked,
     onSupportingContentClicked,
     onFollowupQuestionClicked,
-    showFollowupQuestions
+    showFollowupQuestions,
+    showSpeechOutputAzure,
+    showSpeechOutputBrowser,
+    speechUrl
 }: Props) => {
-    const followupQuestions = answer.choices[0].context.followup_questions;
-    const messageContent = answer.choices[0].message.content;
+    const followupQuestions = answer.context?.followup_questions;
+    const messageContent = answer.message.content;
     const parsedAnswer = useMemo(() => parseAnswerToHtml(messageContent, isStreaming, onCitationClicked), [answer]);
 
     const sanitizedAnswerHtml = DOMPurify.sanitize(parsedAnswer.answerHtml);
@@ -45,23 +49,23 @@ export const Answer = ({
                     <AnswerIcon />
                     <div>
                         <IconButton
-                            style={{ color: "#11271A" }}
+                            style={{ color: "black" }}
+                            iconProps={{ iconName: "Lightbulb" }}
                             title="Show thought process"
                             ariaLabel="Show thought process"
                             onClick={() => onThoughtProcessClicked()}
-                            disabled={!answer.choices[0].context.thoughts?.length}
-                        >
-                            <img src={ThoughtProcessIcon} alt="Open thought process" aria-hidden="true" width="24px" height="24px" />
-                        </IconButton>
+                            disabled={!answer.context.thoughts?.length}
+                        />
                         <IconButton
-                            style={{ color: "#11271A" }}
+                            style={{ color: "black" }}
+                            iconProps={{ iconName: "ClipboardList" }}
                             title="Show supporting content"
                             ariaLabel="Show supporting content"
                             onClick={() => onSupportingContentClicked()}
-                            disabled={!answer.choices[0].context.data_points}
-                        >
-                            <img src={SupportingContentIcon} alt="Open supporting content" aria-hidden="true" width="24px" height="24px" />
-                        </IconButton>
+                            disabled={!answer.context.data_points}
+                        />
+                        {showSpeechOutputAzure && <SpeechOutputAzure url={speechUrl} />}
+                        {showSpeechOutputBrowser && <SpeechOutputBrowser answer={sanitizedAnswerHtml} />}
                     </div>
                 </Stack>
             </Stack.Item>

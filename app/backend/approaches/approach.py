@@ -6,9 +6,9 @@ from typing import (
     AsyncGenerator,
     Awaitable,
     Callable,
+    List,
     Optional,
     TypedDict,
-    Union,
     cast,
 )
 from urllib.parse import urljoin
@@ -22,6 +22,7 @@ from azure.search.documents.models import (
     VectorQuery,
 )
 from openai import AsyncOpenAI
+from openai.types.chat import ChatCompletionMessageParam
 
 from core.authentication import AuthenticationHelper
 from text import nonewlines
@@ -36,9 +37,9 @@ class Document:
     category: Optional[str]
     sourcepage: Optional[str]
     sourcefile: Optional[str]
-    oids: Optional[list[str]]
-    groups: Optional[list[str]]
-    captions: list[QueryCaptionResult]
+    oids: Optional[List[str]]
+    groups: Optional[List[str]]
+    captions: List[QueryCaptionResult]
     score: Optional[float] = None
     reranker_score: Optional[float] = None
 
@@ -173,7 +174,7 @@ class Approach(ABC):
                         sourcefile=document.get("sourcefile"),
                         oids=document.get("oids"),
                         groups=document.get("groups"),
-                        captions=cast(list[QueryCaptionResult], document.get("@search.captions")),
+                        captions=cast(List[QueryCaptionResult], document.get("@search.captions")),
                         score=document.get("@search.score"),
                         reranker_score=document.get("@search.reranker_score"),
                     )
@@ -265,9 +266,16 @@ class Approach(ABC):
 
     async def run(
         self,
-        messages: list[dict],
-        stream: bool = False,
+        messages: list[ChatCompletionMessageParam],
         session_state: Any = None,
         context: dict[str, Any] = {},
-    ) -> Union[dict[str, Any], AsyncGenerator[dict[str, Any], None]]:
+    ) -> dict[str, Any]:
+        raise NotImplementedError
+
+    async def run_stream(
+        self,
+        messages: list[ChatCompletionMessageParam],
+        session_state: Any = None,
+        context: dict[str, Any] = {},
+    ) -> AsyncGenerator[dict[str, Any], None]:
         raise NotImplementedError

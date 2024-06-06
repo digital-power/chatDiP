@@ -8,6 +8,12 @@ if (Test-Path -Path "/usr") {
 
 Write-Host 'Running "prepdocs.py"'
 
+# if AZURE_PUBLIC_NETWORK_ACCESS env variable exists and is Disabled, exit immediately
+if ($env:AZURE_PUBLIC_NETWORK_ACCESS -eq "Disabled") {
+  Write-Host "AZURE_PUBLIC_NETWORK_ACCESS is set to Disabled. Exiting."
+  exit 0
+}
+
 # Optional Data Lake Storage Gen2 args if using sample data for login and access control
 if ($env:AZURE_ADLS_GEN2_STORAGE_ACCOUNT) {
   $adlsGen2StorageAccountArg = "--datalakestorageaccount $env:AZURE_ADLS_GEN2_STORAGE_ACCOUNT"
@@ -74,7 +80,7 @@ $argumentList = "./app/backend/prepdocs.py $dataArg --verbose " + `
 "--subscriptionid $env:AZURE_SUBSCRIPTION_ID " + `
 "--storageaccount $env:AZURE_STORAGE_ACCOUNT --container $env:AZURE_STORAGE_CONTAINER --storageresourcegroup $env:AZURE_STORAGE_RESOURCE_GROUP " + `
 "--searchservice $env:AZURE_SEARCH_SERVICE --index $env:AZURE_SEARCH_INDEX " + `
-"$searchAnalyzerNameArg $searchSecretNameArg " + `
+"$searchAnalyzerNameArg " + `
 "--openaihost `"$env:OPENAI_HOST`" --openaimodelname `"$env:AZURE_OPENAI_EMB_MODEL_NAME`" $openaiDimensionsArg " + `
 "--openaiservice `"$env:AZURE_OPENAI_SERVICE`" --openaideployment `"$env:AZURE_OPENAI_EMB_DEPLOYMENT`" " + `
 "--openaikey `"$env:OPENAI_API_KEY`" --openaiorg `"$env:OPENAI_ORGANIZATION`" " + `
@@ -83,7 +89,6 @@ $argumentList = "./app/backend/prepdocs.py $dataArg --verbose " + `
 "$adlsGen2StorageAccountArg $adlsGen2FilesystemArg $adlsGen2FilesystemPathArg  " + `
 "$tenantArg $aclArg " + `
 "$disableVectorsArg $localPdfParserArg $localHtmlParserArg " + `
-"$keyVaultName " + `
 "$integratedVectorizationArg "
 
 $argumentList

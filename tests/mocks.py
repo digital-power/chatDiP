@@ -4,10 +4,9 @@ from io import BytesIO
 from typing import Optional
 
 import openai.types
+from azure.cognitiveservices.speech import ResultReason
 from azure.core.credentials_async import AsyncTokenCredential
-from azure.search.documents.models import (
-    VectorQuery,
-)
+from azure.search.documents.models import VectorQuery
 from azure.storage.blob import BlobProperties
 
 MOCK_EMBEDDING_DIMENSIONS = 1536
@@ -17,8 +16,22 @@ MockToken = namedtuple("MockToken", ["token", "expires_on", "value"])
 
 
 class MockAzureCredential(AsyncTokenCredential):
+
     async def get_token(self, uri):
         return MockToken("", 9999999999, "")
+
+
+class MockAzureCredentialExpired(AsyncTokenCredential):
+
+    def __init__(self):
+        self.access_number = 0
+
+    async def get_token(self, uri):
+        self.access_number += 1
+        if self.access_number == 1:
+            return MockToken("", 0, "")
+        else:
+            return MockToken("", 9999999999, "")
 
 
 class MockBlobClient:
@@ -37,16 +50,6 @@ class MockBlob:
 
     async def readinto(self, buffer: BytesIO):
         buffer.write(b"test")
-
-
-class MockKeyVaultSecret:
-    def __init__(self, value):
-        self.value = value
-
-
-class MockKeyVaultSecretClient:
-    async def get_secret(self, secret_name):
-        return MockKeyVaultSecret("mysecret")
 
 
 class MockAsyncPageIterator:
@@ -196,3 +199,57 @@ def mock_computervision_response():
             }
         ),
     )
+
+
+class MockAudio:
+    def __init__(self, audio_data):
+        self.audio_data = audio_data
+        self.reason = ResultReason.SynthesizingAudioCompleted
+
+    def read(self):
+        return self.audio_data
+
+
+class MockSpeechSynthesisCancellationDetails:
+    def __init__(self):
+        self.reason = "Canceled"
+        self.error_details = "The synthesis was canceled."
+
+
+class MockAudioCancelled:
+    def __init__(self, audio_data):
+        self.audio_data = audio_data
+        self.reason = ResultReason.Canceled
+        self.cancellation_details = MockSpeechSynthesisCancellationDetails()
+
+    def read(self):
+        return self.audio_data
+
+
+class MockAudioFailure:
+    def __init__(self, audio_data):
+        self.audio_data = audio_data
+        self.reason = ResultReason.NoMatch
+
+    def read(self):
+        return self.audio_data
+
+
+class MockSynthesisResult:
+    def __init__(self, result):
+        self.__result = result
+
+    def get(self):
+        return self.__result
+
+
+def mock_speak_text_success(self, text):
+    return MockSynthesisResult(MockAudio("mock_audio_data"))
+
+
+def mock_speak_text_cancelled(self, text):
+    return MockSynthesisResult(MockAudioCancelled("mock_audio_data"))
+
+
+def mock_speak_text_failed(self, text):
+    return MockSynthesisResult(MockAudioFailure("mock_audio_data"))
