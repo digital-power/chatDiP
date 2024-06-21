@@ -135,8 +135,8 @@ class Approach(ABC):
         use_text_search: bool,
         use_vector_search: bool,
         use_semantic_ranker: bool,
-        usecase: str,
         use_semantic_captions: bool,
+        usecase: str,
         minimum_search_score: Optional[float],
         minimum_reranker_score: Optional[float],
     ) -> list[Document]:
