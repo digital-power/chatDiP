@@ -1,5 +1,5 @@
 import logging
-from typing import List, Optional
+from typing import Optional
 
 from .blobmanager import BlobManager
 from .embeddings import ImageEmbeddings, OpenAIEmbeddings
@@ -16,7 +16,7 @@ async def parse_file(
     file_processors: dict[str, FileProcessor],
     category: Optional[str] = None,
     image_embeddings: Optional[ImageEmbeddings] = None,
-) -> List[Section]:
+) -> list[Section]:
     key = file.file_extension()
     processor = file_processors.get(key)
     if processor is None:
@@ -75,7 +75,11 @@ class FileStrategy(Strategy):
 
     async def run(self):
         search_manager = SearchManager(
-            self.search_info, self.search_analyzer_name, self.use_acls, False, self.embeddings
+            self.search_info,
+            self.search_analyzer_name,
+            self.use_acls,
+            False,
+            self.embeddings,
         )
         if self.document_action == DocumentAction.Add:
             files = self.list_file_strategy.list()
@@ -84,10 +88,10 @@ class FileStrategy(Strategy):
                     sections = await parse_file(file, self.file_processors, self.category, self.image_embeddings)
                     if sections:
                         blob_sas_uris = await self.blob_manager.upload_blob(file)
-                        blob_image_embeddings: Optional[List[List[float]]] = None
+                        blob_image_embeddings: Optional[list[list[float]]] = None
                         if self.image_embeddings and blob_sas_uris:
                             blob_image_embeddings = await self.image_embeddings.create_embeddings(blob_sas_uris)
-                        await search_manager.update_content(sections, blob_image_embeddings)
+                        await search_manager.update_content(sections, blob_image_embeddings, url=file.url)
                 finally:
                     if file:
                         file.close()
@@ -124,7 +128,7 @@ class UploadUserFileStrategy:
             logging.warning("Image embeddings are not currently supported for the user upload feature")
         sections = await parse_file(file, self.file_processors)
         if sections:
-            await self.search_manager.update_content(sections)
+            await self.search_manager.update_content(sections, url=file.url)
 
     async def remove_file(self, filename: str, oid: str):
         if filename is None or filename == "":

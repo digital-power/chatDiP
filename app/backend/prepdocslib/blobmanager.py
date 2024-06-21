@@ -3,7 +3,7 @@ import io
 import logging
 import os
 import re
-from typing import List, Optional, Union
+from typing import Optional, Union
 
 import fitz  # type: ignore
 from azure.core.credentials_async import AsyncTokenCredential
@@ -45,18 +45,22 @@ class BlobManager:
         self.subscriptionId = subscriptionId
         self.user_delegation_key: Optional[UserDelegationKey] = None
 
-    async def upload_blob(self, file: File) -> Optional[List[str]]:
+    async def upload_blob(self, file: File) -> Optional[list[str]]:
         async with BlobServiceClient(
-            account_url=self.endpoint, credential=self.credential, max_single_put_size=4 * 1024 * 1024
+            account_url=self.endpoint,
+            credential=self.credential,
+            max_single_put_size=4 * 1024 * 1024,
         ) as service_client, service_client.get_container_client(self.container) as container_client:
             if not await container_client.exists():
                 await container_client.create_container()
 
             # Re-open and upload the original file
-            with open(file.content.name, "rb") as reopened_file:
-                blob_name = BlobManager.blob_name_from_file_name(file.content.name)
-                logger.info("Uploading blob for whole file -> %s", blob_name)
-                await container_client.upload_blob(blob_name, reopened_file, overwrite=True)
+            if file.url is None:
+                with open(file.content.name, "rb") as reopened_file:
+                    blob_name = BlobManager.blob_name_from_file_name(file.content.name)
+                    logger.info("Uploading blob for whole file -> %s", blob_name)
+                    blob_client = await container_client.upload_blob(blob_name, reopened_file, overwrite=True)
+                    file.url = blob_client.url
 
             if self.store_page_images:
                 if os.path.splitext(file.content.name)[1].lower() == ".pdf":
@@ -70,8 +74,11 @@ class BlobManager:
         return f"ResourceId=/subscriptions/{self.subscriptionId}/resourceGroups/{self.resourceGroup}/providers/Microsoft.Storage/storageAccounts/{self.account};"
 
     async def upload_pdf_blob_images(
-        self, service_client: BlobServiceClient, container_client: ContainerClient, file: File
-    ) -> List[str]:
+        self,
+        service_client: BlobServiceClient,
+        container_client: ContainerClient,
+        file: File,
+    ) -> list[str]:
         with open(file.content.name, "rb") as reopened_file:
             reader = PdfReader(reopened_file)
             page_count = len(reader.pages)

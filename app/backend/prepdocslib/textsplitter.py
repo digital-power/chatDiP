@@ -1,6 +1,6 @@
 import logging
 from abc import ABC
-from typing import Generator, List
+from typing import Generator
 
 import tiktoken
 
@@ -16,7 +16,7 @@ class TextSplitter(ABC):
     :return: A generator of SplitPage
     """
 
-    def split_pages(self, pages: List[Page]) -> Generator[SplitPage, None, None]:
+    def split_pages(self, pages: list[Page]) -> Generator[SplitPage, None, None]:
         if False:
             yield  # pragma: no cover - this is necessary for mypy to type check
 
@@ -93,7 +93,7 @@ class SentenceTextSplitter(TextSplitter):
         self.max_section_length = DEFAULT_SECTION_LENGTH
         self.sentence_search_limit = 100
         self.max_tokens_per_section = max_tokens_per_section
-        self.section_overlap = self.max_section_length // DEFAULT_OVERLAP_PERCENT
+        self.section_overlap = int(self.max_section_length * DEFAULT_OVERLAP_PERCENT / 100)
         self.has_image_embeddings = has_image_embeddings
 
     def split_page_by_max_tokens(self, page_num: int, text: str) -> Generator[SplitPage, None, None]:
@@ -134,7 +134,7 @@ class SentenceTextSplitter(TextSplitter):
             yield from self.split_page_by_max_tokens(page_num, first_half)
             yield from self.split_page_by_max_tokens(page_num, second_half)
 
-    def split_pages(self, pages: List[Page]) -> Generator[SplitPage, None, None]:
+    def split_pages(self, pages: list[Page]) -> Generator[SplitPage, None, None]:
         def find_page(offset):
             num_pages = len(pages)
             for i in range(num_pages - 1):
@@ -217,7 +217,7 @@ class SimpleTextSplitter(TextSplitter):
     def __init__(self, max_object_length: int = 1000):
         self.max_object_length = max_object_length
 
-    def split_pages(self, pages: List[Page]) -> Generator[SplitPage, None, None]:
+    def split_pages(self, pages: list[Page]) -> Generator[SplitPage, None, None]:
         all_text = "".join(page.text for page in pages)
         if len(all_text.strip()) == 0:
             return
@@ -229,5 +229,8 @@ class SimpleTextSplitter(TextSplitter):
 
         # its too big, so we need to split it
         for i in range(0, length, self.max_object_length):
-            yield SplitPage(page_num=i // self.max_object_length, text=all_text[i : i + self.max_object_length])
+            yield SplitPage(
+                page_num=i // self.max_object_length,
+                text=all_text[i : i + self.max_object_length],
+            )
         return

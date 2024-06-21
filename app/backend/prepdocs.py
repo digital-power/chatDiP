@@ -6,7 +6,6 @@ from typing import Optional, Union
 from azure.core.credentials import AzureKeyCredential
 from azure.core.credentials_async import AsyncTokenCredential
 from azure.identity.aio import AzureDeveloperCliCredential, get_bearer_token_provider
-from azure.keyvault.secrets.aio import SecretClient
 
 from prepdocslib.blobmanager import BlobManager
 from prepdocslib.embeddings import (
@@ -47,15 +46,7 @@ async def setup_search_info(
     index_name: str,
     azure_credential: AsyncTokenCredential,
     search_key: Union[str, None] = None,
-    key_vault_name: Union[str, None] = None,
-    search_secret_name: Union[str, None] = None,
 ) -> SearchInfo:
-    if key_vault_name and search_secret_name:
-        async with SecretClient(
-            vault_url=f"https://{key_vault_name}.vault.azure.net", credential=azure_credential
-        ) as key_vault_client:
-            search_key = (await key_vault_client.get_secret(search_secret_name)).value  # type: ignore[attr-defined]
-
     search_creds: Union[AsyncTokenCredential, AzureKeyCredential] = (
         azure_credential if search_key is None else AzureKeyCredential(search_key)
     )
@@ -205,7 +196,9 @@ def setup_file_processors(
 
 
 def setup_image_embeddings_service(
-    azure_credential: AsyncTokenCredential, vision_endpoint: Union[str, None], search_images: bool
+    azure_credential: AsyncTokenCredential,
+    vision_endpoint: Union[str, None],
+    search_images: bool,
 ) -> Union[ImageEmbeddings, None]:
     image_embeddings_service: Optional[ImageEmbeddings] = None
     if search_images:
@@ -228,11 +221,13 @@ async def main(strategy: Strategy, setup_index: bool = True):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Prepare documents by extracting content from PDFs, splitting content into sections, uploading to blob storage, and indexing in a search index.",
-        epilog="Example: prepdocs.py '..\data\*' --storageaccount myaccount --container mycontainer --searchservice mysearch --index myindex -v",
+        epilog="Example: prepdocs.py '.\\data\*' --storageaccount myaccount --container mycontainer --searchservice mysearch --index myindex -v",
     )
     parser.add_argument("files", nargs="?", help="Files to be processed")
     parser.add_argument(
-        "--datalakestorageaccount", required=False, help="Optional. Azure Data Lake Storage Gen2 Account name"
+        "--datalakestorageaccount",
+        required=False,
+        help="Optional. Azure Data Lake Storage Gen2 Account name",
     )
     parser.add_argument(
         "--datalakefilesystem",
@@ -246,16 +241,23 @@ if __name__ == "__main__":
         help="Optional. Azure Data Lake Storage Gen2 filesystem path containing files to index. If omitted, index the entire filesystem",
     )
     parser.add_argument(
-        "--datalakekey", required=False, help="Optional. Use this key when authenticating to Azure Data Lake Gen2"
+        "--datalakekey",
+        required=False,
+        help="Optional. Use this key when authenticating to Azure Data Lake Gen2",
     )
     parser.add_argument(
-        "--useacls", action="store_true", help="Store ACLs from Azure Data Lake Gen2 Filesystem in the search index"
+        "--useacls",
+        action="store_true",
+        help="Store ACLs from Azure Data Lake Gen2 Filesystem in the search index",
     )
     parser.add_argument(
-        "--category", help="Value for the category field in the search index for all sections indexed in this run"
+        "--category",
+        help="Value for the category field in the search index for all sections indexed in this run",
     )
     parser.add_argument(
-        "--skipblobs", action="store_true", help="Skip uploading individual pages to Azure Blob Storage"
+        "--skipblobs",
+        action="store_true",
+        help="Skip uploading individual pages to Azure Blob Storage",
     )
     parser.add_argument("--storageaccount", help="Azure Blob Storage account name")
     parser.add_argument("--container", help="Azure Blob Storage container name")
@@ -266,7 +268,9 @@ if __name__ == "__main__":
         help="Optional. Use this Azure Blob Storage account key instead of the current user identity to login (use az login to set current user for Azure)",
     )
     parser.add_argument(
-        "--tenantid", required=False, help="Optional. Use this to define the Azure directory where to authenticate)"
+        "--tenantid",
+        required=False,
+        help="Optional. Use this to define the Azure directory where to authenticate)",
     )
     parser.add_argument(
         "--subscriptionid",
@@ -292,24 +296,26 @@ if __name__ == "__main__":
         help="Optional. Use this Azure AI Search account key instead of the current user identity to login (use az login to set current user for Azure)",
     )
     parser.add_argument(
-        "--searchsecretname",
-        required=False,
-        help="Required if searchkey is not provided and search service is free sku. Fetch the Azure AI Vision key from this keyvault instead of the instead of the current user identity to login (use az login to set current user for Azure)",
-    )
-    parser.add_argument(
         "--searchanalyzername",
         required=False,
         default="en.microsoft",
         help="Optional. Name of the Azure AI Search analyzer to use for the content field in the index",
     )
-    parser.add_argument("--openaihost", help="Host of the API used to compute embeddings ('azure' or 'openai')")
-    parser.add_argument("--openaiservice", help="Name of the Azure OpenAI service used to compute embeddings")
+    parser.add_argument(
+        "--openaihost",
+        help="Host of the API used to compute embeddings ('azure' or 'openai')",
+    )
+    parser.add_argument(
+        "--openaiservice",
+        help="Name of the Azure OpenAI service used to compute embeddings",
+    )
     parser.add_argument(
         "--openaideployment",
         help="Name of the Azure OpenAI model deployment for an embedding model ('text-embedding-ada-002' recommended)",
     )
     parser.add_argument(
-        "--openaimodelname", help="Name of the Azure OpenAI embedding model ('text-embedding-ada-002' recommended)"
+        "--openaimodelname",
+        help="Name of the Azure OpenAI embedding model ('text-embedding-ada-002' recommended)",
     )
     parser.add_argument(
         "--openaidimensions",
@@ -324,14 +330,20 @@ if __name__ == "__main__":
         help="Don't compute embeddings for the sections (e.g. don't call the OpenAI embeddings API during indexing)",
     )
     parser.add_argument(
-        "--disablebatchvectors", action="store_true", help="Don't compute embeddings in batch for the sections"
+        "--disablebatchvectors",
+        action="store_true",
+        help="Don't compute embeddings in batch for the sections",
     )
     parser.add_argument(
         "--openaikey",
         required=False,
         help="Optional. Use this Azure OpenAI account key instead of the current user identity to login (use az login to set current user for Azure). This is required only when using non-Azure endpoints.",
     )
-    parser.add_argument("--openaiorg", required=False, help="This is required only when using non-Azure endpoints.")
+    parser.add_argument(
+        "--openaiorg",
+        required=False,
+        help="This is required only when using non-Azure endpoints.",
+    )
     parser.add_argument(
         "--remove",
         action="store_true",
@@ -374,11 +386,6 @@ if __name__ == "__main__":
         help="Optional, required if --searchimages is specified. Endpoint of Azure AI Vision service to use when embedding images.",
     )
     parser.add_argument(
-        "--keyvaultname",
-        required=False,
-        help="Required only if any keys must be fetched from the key vault.",
-    )
-    parser.add_argument(
         "--useintvectorization",
         required=False,
         help="Required if --useintvectorization is specified. Enable Integrated vectorizer indexer support which is in preview)",
@@ -417,8 +424,6 @@ if __name__ == "__main__":
             index_name=args.index,
             azure_credential=azd_credential,
             search_key=clean_key_if_exists(args.searchkey),
-            key_vault_name=args.keyvaultname,
-            search_secret_name=args.searchsecretname,
         )
     )
     blob_manager = setup_blob_manager(
@@ -475,7 +480,9 @@ if __name__ == "__main__":
             search_images=args.searchimages,
         )
         image_embeddings_service = setup_image_embeddings_service(
-            azure_credential=azd_credential, vision_endpoint=args.visionendpoint, search_images=args.searchimages
+            azure_credential=azd_credential,
+            vision_endpoint=args.visionendpoint,
+            search_images=args.searchimages,
         )
 
         ingestion_strategy = FileStrategy(

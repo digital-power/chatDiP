@@ -44,7 +44,10 @@ async def add_client_secret(graph_client: GraphServiceClient, app_id: str) -> st
 
 
 async def create_or_update_application_with_secret(
-    graph_client: GraphServiceClient, app_id_env_var: str, app_secret_env_var: str, request_app: Application
+    graph_client: GraphServiceClient,
+    app_id_env_var: str,
+    app_secret_env_var: str,
+    request_app: Application,
 ) -> Tuple[str, str, bool]:
     app_id = os.getenv(app_id_env_var, "no-id")
     created_app = False
@@ -134,7 +137,12 @@ def client_app(server_app_id: str, server_app: Application, identifier: int) -> 
             redirect_uris=["http://localhost:50505/.auth/login/aad/callback"],
             implicit_grant_settings=ImplicitGrantSettings(enable_id_token_issuance=True),
         ),
-        spa=SpaApplication(redirect_uris=["http://localhost:50505/redirect", "http://localhost:5173/redirect"]),
+        spa=SpaApplication(
+            redirect_uris=[
+                "http://localhost:50505/redirect",
+                "http://localhost:5173/redirect",
+            ]
+        ),
         required_resource_access=[
             RequiredResourceAccess(
                 resource_app_id=server_app_id,
@@ -169,8 +177,9 @@ async def main():
         print("Not setting up authentication.")
         exit(0)
 
-    print("Setting up authentication...")
-    credential = AzureDeveloperCliCredential(tenant_id=os.getenv("AZURE_AUTH_TENANT_ID", os.environ["AZURE_TENANT_ID"]))
+    auth_tenant = os.getenv("AZURE_AUTH_TENANT_ID", os.environ["AZURE_TENANT_ID"])
+    print("Setting up authentication for tenant", auth_tenant)
+    credential = AzureDeveloperCliCredential(tenant_id=auth_tenant)
 
     scopes = ["https://graph.microsoft.com/.default"]
     graph_client = GraphServiceClient(credentials=credential, scopes=scopes)

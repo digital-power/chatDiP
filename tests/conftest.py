@@ -1,14 +1,15 @@
 import json
 import os
+from typing import IO
 from unittest import mock
 
 import aiohttp
+import azure.cognitiveservices.speech
 import azure.storage.filedatalake
 import azure.storage.filedatalake.aio
 import msal
 import pytest
 import pytest_asyncio
-from azure.keyvault.secrets.aio import SecretClient
 from azure.search.documents.aio import SearchClient
 from azure.search.documents.indexes.aio import SearchIndexClient
 from azure.search.documents.indexes.models import SearchField, SearchIndex
@@ -29,10 +30,13 @@ from .mocks import (
     MockAsyncPageIterator,
     MockAsyncSearchResultsIterator,
     MockAzureCredential,
+    MockAzureCredentialExpired,
     MockBlobClient,
-    MockKeyVaultSecretClient,
     MockResponse,
     mock_computervision_response,
+    mock_speak_text_cancelled,
+    mock_speak_text_failed,
+    mock_speak_text_success,
 )
 
 MockSearchIndex = SearchIndex(
@@ -50,11 +54,6 @@ async def mock_search(self, *args, **kwargs):
 
 
 @pytest.fixture
-def mock_get_secret(monkeypatch):
-    monkeypatch.setattr(SecretClient, "get_secret", MockKeyVaultSecretClient().get_secret)
-
-
-@pytest.fixture
 def mock_compute_embeddings_call(monkeypatch):
     def mock_post(*args, **kwargs):
         if kwargs.get("url").endswith("computervision/retrieval:vectorizeText"):
@@ -63,6 +62,33 @@ def mock_compute_embeddings_call(monkeypatch):
             raise Exception("Unexpected URL for mock call to ClientSession.post()")
 
     monkeypatch.setattr(aiohttp.ClientSession, "post", mock_post)
+
+
+@pytest.fixture
+def mock_speech_success(monkeypatch):
+    monkeypatch.setattr(
+        azure.cognitiveservices.speech.SpeechSynthesizer,
+        "speak_text_async",
+        mock_speak_text_success,
+    )
+
+
+@pytest.fixture
+def mock_speech_cancelled(monkeypatch):
+    monkeypatch.setattr(
+        azure.cognitiveservices.speech.SpeechSynthesizer,
+        "speak_text_async",
+        mock_speak_text_cancelled,
+    )
+
+
+@pytest.fixture
+def mock_speech_failed(monkeypatch):
+    monkeypatch.setattr(
+        azure.cognitiveservices.speech.SpeechSynthesizer,
+        "speak_text_async",
+        mock_speak_text_failed,
+    )
 
 
 @pytest.fixture
@@ -98,10 +124,22 @@ def mock_openai_chatcompletion(monkeypatch):
             chunk_id = "test-id"
             model = "gpt-35-turbo"
             self.responses = [
-                {"object": "chat.completion.chunk", "choices": [], "id": chunk_id, "model": model, "created": 1},
                 {
                     "object": "chat.completion.chunk",
-                    "choices": [{"delta": {"role": "assistant"}, "index": 0, "finish_reason": None}],
+                    "choices": [],
+                    "id": chunk_id,
+                    "model": model,
+                    "created": 1,
+                },
+                {
+                    "object": "chat.completion.chunk",
+                    "choices": [
+                        {
+                            "delta": {"role": "assistant"},
+                            "index": 0,
+                            "finish_reason": None,
+                        }
+                    ],
                     "id": chunk_id,
                     "model": model,
                     "created": 1,
@@ -115,7 +153,10 @@ def mock_openai_chatcompletion(monkeypatch):
                         "object": "chat.completion.chunk",
                         "choices": [
                             {
-                                "delta": {"role": "assistant", "content": parts[0] + "<<"},
+                                "delta": {
+                                    "role": "assistant",
+                                    "content": parts[0] + "<<",
+                                },
                                 "index": 0,
                                 "finish_reason": None,
                             }
@@ -129,7 +170,11 @@ def mock_openai_chatcompletion(monkeypatch):
                     {
                         "object": "chat.completion.chunk",
                         "choices": [
-                            {"delta": {"role": "assistant", "content": parts[1]}, "index": 0, "finish_reason": None}
+                            {
+                                "delta": {"role": "assistant", "content": parts[1]},
+                                "index": 0,
+                                "finish_reason": None,
+                            }
                         ],
                         "id": chunk_id,
                         "model": model,
@@ -139,7 +184,13 @@ def mock_openai_chatcompletion(monkeypatch):
                 self.responses.append(
                     {
                         "object": "chat.completion.chunk",
-                        "choices": [{"delta": {"role": None, "content": None}, "index": 0, "finish_reason": "stop"}],
+                        "choices": [
+                            {
+                                "delta": {"role": None, "content": None},
+                                "index": 0,
+                                "finish_reason": "stop",
+                            }
+                        ],
                         "id": chunk_id,
                         "model": model,
                         "created": 1,
@@ -149,7 +200,13 @@ def mock_openai_chatcompletion(monkeypatch):
                 self.responses.append(
                     {
                         "object": "chat.completion.chunk",
-                        "choices": [{"delta": {"content": answer}, "index": 0, "finish_reason": None}],
+                        "choices": [
+                            {
+                                "delta": {"content": answer},
+                                "index": 0,
+                                "finish_reason": None,
+                            }
+                        ],
                         "id": chunk_id,
                         "model": model,
                         "created": 1,
@@ -185,7 +242,9 @@ def mock_openai_chatcompletion(monkeypatch):
                 object="chat.completion",
                 choices=[
                     Choice(
-                        message=ChatCompletionMessage(role="assistant", content=answer), finish_reason="stop", index=0
+                        message=ChatCompletionMessage(role="assistant", content=answer),
+                        finish_reason="stop",
+                        index=0,
                     )
                 ],
                 id="test-123",
@@ -237,9 +296,7 @@ envs = [
         "AZURE_OPENAI_EMB_DEPLOYMENT": "test-ada",
         "USE_GPT4V": "true",
         "AZURE_OPENAI_GPT4V_MODEL": "gpt-4",
-        "VISION_SECRET_NAME": "mysecret",
         "VISION_ENDPOINT": "https://testvision.cognitiveservices.azure.com/",
-        "AZURE_KEY_VAULT_NAME": "mykeyvault",
     },
 ]
 
@@ -259,16 +316,38 @@ auth_envs = [
     },
 ]
 
+auth_public_envs = [
+    {
+        "OPENAI_HOST": "azure",
+        "AZURE_OPENAI_SERVICE": "test-openai-service",
+        "AZURE_OPENAI_CHATGPT_DEPLOYMENT": "test-chatgpt",
+        "AZURE_OPENAI_EMB_DEPLOYMENT": "test-ada",
+        "AZURE_USE_AUTHENTICATION": "true",
+        "AZURE_ENABLE_GLOBAL_DOCUMENT_ACCESS": "true",
+        "AZURE_ENABLE_UNAUTHENTICATED_ACCESS": "true",
+        "AZURE_USER_STORAGE_ACCOUNT": "test-user-storage-account",
+        "AZURE_USER_STORAGE_CONTAINER": "test-user-storage-container",
+        "AZURE_SERVER_APP_ID": "SERVER_APP",
+        "AZURE_SERVER_APP_SECRET": "SECRET",
+        "AZURE_CLIENT_APP_ID": "CLIENT_APP",
+        "AZURE_TENANT_ID": "TENANT_ID",
+    },
+]
+
 
 @pytest.fixture(params=envs, ids=["client0", "client1"])
-def mock_env(monkeypatch, request, mock_get_secret):
+def mock_env(monkeypatch, request):
     with mock.patch.dict(os.environ, clear=True):
         monkeypatch.setenv("AZURE_STORAGE_ACCOUNT", "test-storage-account")
         monkeypatch.setenv("AZURE_STORAGE_CONTAINER", "test-storage-container")
         monkeypatch.setenv("AZURE_STORAGE_RESOURCE_GROUP", "test-storage-rg")
         monkeypatch.setenv("AZURE_SUBSCRIPTION_ID", "test-storage-subid")
+        monkeypatch.setenv("USE_SPEECH_INPUT_BROWSER", "true")
+        monkeypatch.setenv("USE_SPEECH_OUTPUT_AZURE", "true")
         monkeypatch.setenv("AZURE_SEARCH_INDEX", "test-search-index")
         monkeypatch.setenv("AZURE_SEARCH_SERVICE", "test-search-service")
+        monkeypatch.setenv("AZURE_SPEECH_SERVICE_ID", "test-id")
+        monkeypatch.setenv("AZURE_SPEECH_SERVICE_LOCATION", "eastus")
         monkeypatch.setenv("AZURE_OPENAI_CHATGPT_MODEL", "gpt-35-turbo")
         monkeypatch.setenv("ALLOWED_ORIGIN", "https://frontend.com")
         for key, value in request.param.items():
@@ -300,6 +379,26 @@ async def client(
         yield test_app.test_client()
 
 
+@pytest_asyncio.fixture()
+async def client_with_expiring_token(
+    monkeypatch,
+    mock_env,
+    mock_openai_chatcompletion,
+    mock_openai_embedding,
+    mock_acs_search,
+    mock_blob_container_client,
+    mock_compute_embeddings_call,
+):
+    quart_app = app.create_app()
+
+    async with quart_app.test_app() as test_app:
+        test_app.app.config.update({"TESTING": True})
+        test_app.app.config.update({"azure_credential": MockAzureCredentialExpired()})
+        mock_openai_chatcompletion(test_app.app.config[app.CONFIG_OPENAI_CLIENT])
+        mock_openai_embedding(test_app.app.config[app.CONFIG_OPENAI_CLIENT])
+        yield test_app.test_client()
+
+
 @pytest_asyncio.fixture(params=auth_envs)
 async def auth_client(
     monkeypatch,
@@ -309,7 +408,6 @@ async def auth_client(
     mock_validate_token_success,
     mock_list_groups_success,
     mock_acs_search_filter,
-    mock_get_secret,
     request,
 ):
     monkeypatch.setenv("AZURE_STORAGE_ACCOUNT", "test-storage-account")
@@ -323,6 +421,47 @@ async def auth_client(
     monkeypatch.setenv("USE_LOCAL_PDF_PARSER", "true")
     monkeypatch.setenv("USE_LOCAL_HTML_PARSER", "true")
     monkeypatch.setenv("AZURE_DOCUMENTINTELLIGENCE_SERVICE", "test-documentintelligence-service")
+
+    for key, value in request.param.items():
+        monkeypatch.setenv(key, value)
+
+    with mock.patch("app.DefaultAzureCredential") as mock_default_azure_credential:
+        mock_default_azure_credential.return_value = MockAzureCredential()
+        quart_app = app.create_app()
+
+        async with quart_app.test_app() as test_app:
+            quart_app.config.update({"TESTING": True})
+            mock_openai_chatcompletion(test_app.app.config[app.CONFIG_OPENAI_CLIENT])
+            mock_openai_embedding(test_app.app.config[app.CONFIG_OPENAI_CLIENT])
+            client = test_app.test_client()
+            client.config = quart_app.config
+
+            yield client
+
+
+@pytest_asyncio.fixture(params=auth_public_envs)
+async def auth_public_documents_client(
+    monkeypatch,
+    mock_openai_chatcompletion,
+    mock_openai_embedding,
+    mock_confidential_client_success,
+    mock_validate_token_success,
+    mock_list_groups_success,
+    mock_acs_search_filter,
+    request,
+):
+    monkeypatch.setenv("AZURE_STORAGE_ACCOUNT", "test-storage-account")
+    monkeypatch.setenv("AZURE_STORAGE_CONTAINER", "test-storage-container")
+    monkeypatch.setenv("AZURE_SEARCH_INDEX", "test-search-index")
+    monkeypatch.setenv("AZURE_SEARCH_SERVICE", "test-search-service")
+    monkeypatch.setenv("AZURE_OPENAI_CHATGPT_MODEL", "gpt-35-turbo")
+    monkeypatch.setenv("USE_USER_UPLOAD", "true")
+    monkeypatch.setenv("AZURE_USERSTORAGE_ACCOUNT", "test-userstorage-account")
+    monkeypatch.setenv("AZURE_USERSTORAGE_CONTAINER", "test-userstorage-container")
+    monkeypatch.setenv("USE_LOCAL_PDF_PARSER", "true")
+    monkeypatch.setenv("USE_LOCAL_HTML_PARSER", "true")
+    monkeypatch.setenv("AZURE_DOCUMENTINTELLIGENCE_SERVICE", "test-documentintelligence-service")
+
     for key, value in request.param.items():
         monkeypatch.setenv(key, value)
 
@@ -345,7 +484,11 @@ def mock_validate_token_success(monkeypatch):
     async def mock_validate_access_token(self, token):
         pass
 
-    monkeypatch.setattr(core.authentication.AuthenticationHelper, "validate_access_token", mock_validate_access_token)
+    monkeypatch.setattr(
+        core.authentication.AuthenticationHelper,
+        "validate_access_token",
+        mock_validate_access_token,
+    )
 
 
 @pytest.fixture
@@ -354,10 +497,15 @@ def mock_confidential_client_success(monkeypatch):
         assert kwargs.get("user_assertion") is not None
         scopes = kwargs.get("scopes")
         assert scopes == [AuthenticationHelper.scope]
-        return {"access_token": "MockToken", "id_token_claims": {"oid": "OID_X", "groups": ["GROUP_Y", "GROUP_Z"]}}
+        return {
+            "access_token": "MockToken",
+            "id_token_claims": {"oid": "OID_X", "groups": ["GROUP_Y", "GROUP_Z"]},
+        }
 
     monkeypatch.setattr(
-        msal.ConfidentialClientApplication, "acquire_token_on_behalf_of", mock_acquire_token_on_behalf_of
+        msal.ConfidentialClientApplication,
+        "acquire_token_on_behalf_of",
+        mock_acquire_token_on_behalf_of,
     )
 
     def mock_init(self, *args, **kwargs):
@@ -375,7 +523,9 @@ def mock_confidential_client_unauthorized(monkeypatch):
         return {"error": "unauthorized"}
 
     monkeypatch.setattr(
-        msal.ConfidentialClientApplication, "acquire_token_on_behalf_of", mock_acquire_token_on_behalf_of
+        msal.ConfidentialClientApplication,
+        "acquire_token_on_behalf_of",
+        mock_acquire_token_on_behalf_of,
     )
 
     def mock_init(self, *args, **kwargs):
@@ -400,7 +550,9 @@ def mock_confidential_client_overage(monkeypatch):
         }
 
     monkeypatch.setattr(
-        msal.ConfidentialClientApplication, "acquire_token_on_behalf_of", mock_acquire_token_on_behalf_of
+        msal.ConfidentialClientApplication,
+        "acquire_token_on_behalf_of",
+        mock_acquire_token_on_behalf_of,
     )
 
     def mock_init(self, *args, **kwargs):
@@ -420,7 +572,10 @@ def mock_list_groups_success(monkeypatch):
                 self.num = 1
                 return MockResponse(
                     text=json.dumps(
-                        {"@odata.nextLink": "https://odatanextlink.com", "value": [{"id": "OVERAGE_GROUP_Y"}]}
+                        {
+                            "@odata.nextLink": "https://odatanextlink.com",
+                            "value": [{"id": "OVERAGE_GROUP_Y"}],
+                        }
                     ),
                     status=200,
                 )
@@ -487,14 +642,22 @@ def mock_data_lake_service_client(monkeypatch):
 
     monkeypatch.setattr(azure.storage.filedatalake.DataLakeServiceClient, "__init__", mock_init)
     monkeypatch.setattr(
-        azure.storage.filedatalake.DataLakeServiceClient, "get_file_system_client", mock_get_file_system_client
+        azure.storage.filedatalake.DataLakeServiceClient,
+        "get_file_system_client",
+        mock_get_file_system_client,
     )
 
-    monkeypatch.setattr(azure.storage.filedatalake.aio.DataLakeServiceClient, "__init__", mock_init_service_client_aio)
+    monkeypatch.setattr(
+        azure.storage.filedatalake.aio.DataLakeServiceClient,
+        "__init__",
+        mock_init_service_client_aio,
+    )
     monkeypatch.setattr(azure.storage.filedatalake.aio.DataLakeServiceClient, "__aenter__", mock_aenter)
     monkeypatch.setattr(azure.storage.filedatalake.aio.DataLakeServiceClient, "__aexit__", mock_aexit)
     monkeypatch.setattr(
-        azure.storage.filedatalake.aio.DataLakeServiceClient, "get_file_system_client", mock_get_file_system_client_aio
+        azure.storage.filedatalake.aio.DataLakeServiceClient,
+        "get_file_system_client",
+        mock_get_file_system_client_aio,
     )
 
     def mock_init_filesystem_aio(self, *args, **kwargs):
@@ -531,19 +694,37 @@ def mock_data_lake_service_client(monkeypatch):
         return MockAsyncPageIterator([azure.storage.filedatalake.PathProperties(name=path) for path in paths])
 
     monkeypatch.setattr(azure.storage.filedatalake.FileSystemClient, "__init__", mock_init)
-    monkeypatch.setattr(azure.storage.filedatalake.FileSystemClient, "get_file_client", mock_get_file_client)
+    monkeypatch.setattr(
+        azure.storage.filedatalake.FileSystemClient,
+        "get_file_client",
+        mock_get_file_client,
+    )
 
-    monkeypatch.setattr(azure.storage.filedatalake.aio.FileSystemClient, "__init__", mock_init_filesystem_aio)
+    monkeypatch.setattr(
+        azure.storage.filedatalake.aio.FileSystemClient,
+        "__init__",
+        mock_init_filesystem_aio,
+    )
     monkeypatch.setattr(azure.storage.filedatalake.aio.FileSystemClient, "__aenter__", mock_aenter)
     monkeypatch.setattr(azure.storage.filedatalake.aio.FileSystemClient, "__aexit__", mock_aexit)
     monkeypatch.setattr(azure.storage.filedatalake.aio.FileSystemClient, "get_paths", mock_get_paths)
     monkeypatch.setattr(azure.storage.filedatalake.aio.FileSystemClient, "exists", mock_exists_aio)
     monkeypatch.setattr(azure.storage.filedatalake.aio.FileSystemClient, "get_paths", mock_get_paths)
-    monkeypatch.setattr(azure.storage.filedatalake.aio.FileSystemClient, "get_file_client", mock_get_file_client)
     monkeypatch.setattr(
-        azure.storage.filedatalake.aio.FileSystemClient, "create_file_system", mock_create_filesystem_aio
+        azure.storage.filedatalake.aio.FileSystemClient,
+        "get_file_client",
+        mock_get_file_client,
     )
-    monkeypatch.setattr(azure.storage.filedatalake.aio.FileSystemClient, "create_directory", mock_create_directory_aio)
+    monkeypatch.setattr(
+        azure.storage.filedatalake.aio.FileSystemClient,
+        "create_file_system",
+        mock_create_filesystem_aio,
+    )
+    monkeypatch.setattr(
+        azure.storage.filedatalake.aio.FileSystemClient,
+        "create_directory",
+        mock_create_directory_aio,
+    )
     monkeypatch.setattr(
         azure.storage.filedatalake.aio.FileSystemClient,
         "_get_root_directory_client",
@@ -554,10 +735,13 @@ def mock_data_lake_service_client(monkeypatch):
         self.path = kwargs.get("file_path")
         self.acl = ""
 
+    def mock_url(self, *args, **kwargs):
+        return f"https://test.blob.core.windows.net/{self.path}"
+
     def mock_download_file(self, *args, **kwargs):
         return azure.storage.filedatalake.StorageStreamDownloader(None)
 
-    def mock_download_file_aio(self, *args, **kwargs):
+    async def mock_download_file_aio(self, *args, **kwargs):
         return azure.storage.filedatalake.aio.StorageStreamDownloader(None)
 
     async def mock_get_access_control(self, *args, **kwargs):
@@ -575,19 +759,36 @@ def mock_data_lake_service_client(monkeypatch):
         pass
 
     monkeypatch.setattr(azure.storage.filedatalake.DataLakeFileClient, "__init__", mock_init_file)
-    monkeypatch.setattr(azure.storage.filedatalake.DataLakeFileClient, "download_file", mock_download_file)
     monkeypatch.setattr(
-        azure.storage.filedatalake.aio.DataLakeFileClient, "get_access_control", mock_get_access_control
+        azure.storage.filedatalake.DataLakeFileClient,
+        "download_file",
+        mock_download_file,
+    )
+    monkeypatch.setattr(
+        azure.storage.filedatalake.aio.DataLakeFileClient,
+        "get_access_control",
+        mock_get_access_control,
     )
 
     monkeypatch.setattr(azure.storage.filedatalake.aio.DataLakeFileClient, "__init__", mock_init_file)
+    monkeypatch.setattr(azure.storage.filedatalake.aio.DataLakeFileClient, "url", property(mock_url))
     monkeypatch.setattr(azure.storage.filedatalake.aio.DataLakeFileClient, "__aenter__", mock_aenter)
     monkeypatch.setattr(azure.storage.filedatalake.aio.DataLakeFileClient, "__aexit__", mock_aexit)
-    monkeypatch.setattr(azure.storage.filedatalake.aio.DataLakeFileClient, "download_file", mock_download_file_aio)
     monkeypatch.setattr(
-        azure.storage.filedatalake.aio.DataLakeFileClient, "get_access_control", mock_get_access_control
+        azure.storage.filedatalake.aio.DataLakeFileClient,
+        "download_file",
+        mock_download_file_aio,
     )
-    monkeypatch.setattr(azure.storage.filedatalake.aio.DataLakeFileClient, "upload_data", mock_upload_data_aio)
+    monkeypatch.setattr(
+        azure.storage.filedatalake.aio.DataLakeFileClient,
+        "get_access_control",
+        mock_get_access_control,
+    )
+    monkeypatch.setattr(
+        azure.storage.filedatalake.aio.DataLakeFileClient,
+        "upload_data",
+        mock_upload_data_aio,
+    )
 
     def mock_init_directory(self, path, *args, **kwargs):
         self.path = path
@@ -612,11 +813,21 @@ def mock_data_lake_service_client(monkeypatch):
     async def mock_close_aio(self, *args, **kwargs):
         pass
 
-    monkeypatch.setattr(azure.storage.filedatalake.aio.DataLakeDirectoryClient, "__init__", mock_init_directory)
-    monkeypatch.setattr(azure.storage.filedatalake.aio.DataLakeDirectoryClient, "__aenter__", mock_aenter)
+    monkeypatch.setattr(
+        azure.storage.filedatalake.aio.DataLakeDirectoryClient,
+        "__init__",
+        mock_init_directory,
+    )
+    monkeypatch.setattr(
+        azure.storage.filedatalake.aio.DataLakeDirectoryClient,
+        "__aenter__",
+        mock_aenter,
+    )
     monkeypatch.setattr(azure.storage.filedatalake.aio.DataLakeDirectoryClient, "__aexit__", mock_aexit)
     monkeypatch.setattr(
-        azure.storage.filedatalake.aio.DataLakeDirectoryClient, "get_file_client", mock_directory_get_file_client
+        azure.storage.filedatalake.aio.DataLakeDirectoryClient,
+        "get_file_client",
+        mock_directory_get_file_client,
     )
     monkeypatch.setattr(
         azure.storage.filedatalake.aio.DataLakeDirectoryClient,
@@ -625,11 +836,16 @@ def mock_data_lake_service_client(monkeypatch):
     )
     monkeypatch.setattr(azure.storage.filedatalake.aio.DataLakeDirectoryClient, "close", mock_close_aio)
 
-    def mock_readinto(self, *args, **kwargs):
-        pass
+    def mock_readinto(self, stream: IO[bytes]):
+        stream.write(b"texttext")
+        return 8
 
     monkeypatch.setattr(azure.storage.filedatalake.StorageStreamDownloader, "__init__", mock_init)
     monkeypatch.setattr(azure.storage.filedatalake.StorageStreamDownloader, "readinto", mock_readinto)
 
     monkeypatch.setattr(azure.storage.filedatalake.aio.StorageStreamDownloader, "__init__", mock_init)
-    monkeypatch.setattr(azure.storage.filedatalake.aio.StorageStreamDownloader, "readinto", mock_readinto)
+    monkeypatch.setattr(
+        azure.storage.filedatalake.aio.StorageStreamDownloader,
+        "readinto",
+        mock_readinto,
+    )

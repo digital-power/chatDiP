@@ -2,6 +2,7 @@ import os
 import sys
 from tempfile import NamedTemporaryFile
 
+import azure.storage.blob.aio
 import pytest
 
 from prepdocslib.blobmanager import BlobManager
@@ -37,11 +38,15 @@ async def test_upload_and_remove(monkeypatch, mock_env, blob_manager):
 
         async def mock_upload_blob(self, name, *args, **kwargs):
             assert name == filename
-            return True
+            return azure.storage.blob.aio.BlobClient.from_blob_url(
+                "https://test.blob.core.windows.net/test/test.pdf",
+                credential=MockAzureCredential(),
+            )
 
         monkeypatch.setattr("azure.storage.blob.aio.ContainerClient.upload_blob", mock_upload_blob)
 
         await blob_manager.upload_blob(f)
+        assert f.url == "https://test.blob.core.windows.net/test/test.pdf"
 
         # Set up mocks used by remove_blob
         def mock_list_blob_names(*args, **kwargs):
@@ -61,7 +66,10 @@ async def test_upload_and_remove(monkeypatch, mock_env, blob_manager):
 
             return AsyncBlobItemsIterator(filename)
 
-        monkeypatch.setattr("azure.storage.blob.aio.ContainerClient.list_blob_names", mock_list_blob_names)
+        monkeypatch.setattr(
+            "azure.storage.blob.aio.ContainerClient.list_blob_names",
+            mock_list_blob_names,
+        )
 
         async def mock_delete_blob(self, name, *args, **kwargs):
             assert name == filename
@@ -87,11 +95,15 @@ async def test_upload_and_remove_all(monkeypatch, mock_env, blob_manager):
 
         async def mock_upload_blob(self, name, *args, **kwargs):
             assert name == filename
-            return True
+            return azure.storage.blob.aio.BlobClient.from_blob_url(
+                "https://test.blob.core.windows.net/test/test.pdf",
+                credential=MockAzureCredential(),
+            )
 
         monkeypatch.setattr("azure.storage.blob.aio.ContainerClient.upload_blob", mock_upload_blob)
 
         await blob_manager.upload_blob(f)
+        assert f.url == "https://test.blob.core.windows.net/test/test.pdf"
 
         # Set up mocks used by remove_blob
         def mock_list_blob_names(*args, **kwargs):
@@ -111,7 +123,10 @@ async def test_upload_and_remove_all(monkeypatch, mock_env, blob_manager):
 
             return AsyncBlobItemsIterator(filename)
 
-        monkeypatch.setattr("azure.storage.blob.aio.ContainerClient.list_blob_names", mock_list_blob_names)
+        monkeypatch.setattr(
+            "azure.storage.blob.aio.ContainerClient.list_blob_names",
+            mock_list_blob_names,
+        )
 
         async def mock_delete_blob(self, name, *args, **kwargs):
             assert name == filename
@@ -138,15 +153,22 @@ async def test_create_container_upon_upload(monkeypatch, mock_env, blob_manager)
         async def mock_create_container(*args, **kwargs):
             return
 
-        monkeypatch.setattr("azure.storage.blob.aio.ContainerClient.create_container", mock_create_container)
+        monkeypatch.setattr(
+            "azure.storage.blob.aio.ContainerClient.create_container",
+            mock_create_container,
+        )
 
         async def mock_upload_blob(self, name, *args, **kwargs):
             assert name == filename
-            return True
+            return azure.storage.blob.aio.BlobClient.from_blob_url(
+                "https://test.blob.core.windows.net/test/test.pdf",
+                credential=MockAzureCredential(),
+            )
 
         monkeypatch.setattr("azure.storage.blob.aio.ContainerClient.upload_blob", mock_upload_blob)
 
         await blob_manager.upload_blob(f)
+        assert f.url == "https://test.blob.core.windows.net/test/test.pdf"
 
 
 @pytest.mark.asyncio
@@ -174,12 +196,16 @@ async def test_upload_blob_no_image(monkeypatch, mock_env, caplog):
 
         async def mock_upload_blob(self, name, *args, **kwargs):
             assert name == filename
-            return True
+            return azure.storage.blob.aio.BlobClient.from_blob_url(
+                "https://test.blob.core.windows.net/test/test.xlsx",
+                credential=MockAzureCredential(),
+            )
 
         monkeypatch.setattr("azure.storage.blob.aio.ContainerClient.upload_blob", mock_upload_blob)
 
         with caplog.at_level("INFO"):
             await blob_manager.upload_blob(f)
+            assert f.url == "https://test.blob.core.windows.net/test/test.xlsx"
             assert "skipping image upload" in caplog.text
 
 

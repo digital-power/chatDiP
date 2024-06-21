@@ -40,7 +40,7 @@ class AdlsGen2Setup:
         filesystem_name
             Name of the container / filesystem in the Data Lake Storage Gen 2 account to use
         security_enabled_groups
-            When creating groups in Azure AD, whether or not to make them security enabled
+            When creating groups in Microsoft Entra, whether or not to make them security enabled
         data_access_control_format
             File describing how to create groups, upload files with access control. See the sampleacls.json for the format of this file
         """
@@ -83,7 +83,8 @@ class AdlsGen2Setup:
                             logging.error(f"File {file} has unknown directory {directory}, exiting...")
                             return
                         await self.upload_file(
-                            directory_client=directories[directory], file_path=os.path.join(self.data_directory, file)
+                            directory_client=directories[directory],
+                            file_path=os.path.join(self.data_directory, file),
                         )
 
                     logging.info("Setting access control...")
@@ -108,7 +109,8 @@ class AdlsGen2Setup:
 
     def create_service_client(self):
         return DataLakeServiceClient(
-            account_url=f"https://{self.storage_account_name}.dfs.core.windows.net", credential=self.credentials
+            account_url=f"https://{self.storage_account_name}.dfs.core.windows.net",
+            credential=self.credentials,
         )
 
     async def upload_file(self, directory_client: DataLakeDirectoryClient, file_path: str):
@@ -177,10 +179,12 @@ if __name__ == "__main__":
         "--create-security-enabled-groups",
         required=False,
         action="store_true",
-        help="Whether or not the sample groups created are security enabled in Azure AD",
+        help="Whether or not the sample groups created are security enabled in Microsoft Entra",
     )
     parser.add_argument(
-        "--data-access-control", required=True, help="JSON file describing access control for the sample data"
+        "--data-access-control",
+        required=True,
+        help="JSON file describing access control for the sample data",
     )
     parser.add_argument("--verbose", "-v", required=False, action="store_true", help="Verbose output")
     args = parser.parse_args()
