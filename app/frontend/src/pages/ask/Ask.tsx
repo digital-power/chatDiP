@@ -122,7 +122,8 @@ export function Component(): JSX.Element {
                         use_groups_security_filter: useGroupsSecurityFilter,
                         vector_fields: vectorFieldList,
                         use_gpt4v: useGPT4V,
-                        gpt4v_input: gpt4vInput
+                        gpt4v_input: gpt4vInput,
+                        usecase: "demo"
                     }
                 },
                 // AI Chat Protocol: Client must pass on any session state received from the server
