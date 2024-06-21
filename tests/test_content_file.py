@@ -39,6 +39,7 @@ class MockAiohttpClientResponse(aiohttp.ClientResponse):
 
 @pytest.mark.asyncio
 async def test_content_file(monkeypatch, mock_env, mock_acs_search):
+
     class MockTransport(AsyncHttpTransport):
         async def send(self, request: HttpRequest, **kwargs) -> AioHttpTransportResponse:
             if request.url.endswith("notfound.pdf") or request.url.endswith("userdoc.pdf"):
@@ -79,18 +80,18 @@ async def test_content_file(monkeypatch, mock_env, mock_acs_search):
 
     quart_app = app.create_app()
     async with quart_app.test_app() as test_app:
-        quart_app.config.update({"blob_container_clients": {"demo": blob_container_client}})
+        quart_app.config.update({"blob_container_client": blob_container_client})
 
         client = test_app.test_client()
-        response = await client.get("/content/usecase/demo/notfound.pdf")
+        response = await client.get("/content/notfound.pdf")
         assert response.status_code == 404
 
-        response = await client.get("/content/usecase/demo/role_library.pdf")
+        response = await client.get("/content/role_library.pdf")
         assert response.status_code == 200
         assert response.headers["Content-Type"] == "application/pdf"
         assert await response.get_data() == b"test content"
 
-        response = await client.get("/content/usecase/demo/role_library.pdf#page=10")
+        response = await client.get("/content/role_library.pdf#page=10")
         assert response.status_code == 200
         assert response.headers["Content-Type"] == "application/pdf"
         assert await response.get_data() == b"test content"
@@ -120,7 +121,7 @@ async def test_content_file_useruploaded_found(monkeypatch, auth_client, mock_bl
         mock_download_file,
     )
 
-    response = await auth_client.get("/content/usecase/demo/userdoc.pdf", headers={"Authorization": "Bearer test"})
+    response = await auth_client.get("/content/userdoc.pdf", headers={"Authorization": "Bearer test"})
     assert response.status_code == 200
     assert len(downloaded_files) == 1
 

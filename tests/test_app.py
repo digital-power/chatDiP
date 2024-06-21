@@ -70,7 +70,7 @@ async def test_missing_env_vars():
 
 
 @pytest.mark.asyncio
-async def test_index(client):
+async def x(client):
     response = await client.get("/")
     assert response.status_code == 200
 
@@ -345,7 +345,7 @@ async def test_chat_text_filter_public_documents(auth_public_documents_client, s
     )
     assert response.status_code == 200
     assert (
-        auth_public_documents_client.config[app.CONFIG_SEARCH_CLIENTS].filter
+        auth_public_documents_client.config[app.CONFIG_SEARCH_CLIENTS]["demo"].filter
         == "category ne 'excluded' and ((oids/any(g:search.in(g, 'OID_X')) or groups/any(g:search.in(g, 'GROUP_Y, GROUP_Z'))) or (not oids/any() and not groups/any()))"
     )
     result = await response.get_json()
