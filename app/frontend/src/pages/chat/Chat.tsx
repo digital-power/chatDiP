@@ -1,6 +1,5 @@
 import { useRef, useState, useEffect } from "react";
 import { Checkbox, Panel, DefaultButton, TextField, ITextFieldProps, ICheckboxProps } from "@fluentui/react";
-import { SparkleFilled } from "@fluentui/react-icons";
 import { useId } from "@fluentui/react-hooks";
 import readNDJSONStream from "ndjson-readablestream";
 
@@ -35,6 +34,8 @@ import { useMsal } from "@azure/msal-react";
 import { TokenClaimsDisplay } from "../../components/TokenClaimsDisplay";
 import { GPT4VSettings } from "../../components/GPT4VSettings";
 import { toolTipText } from "../../i18n/tooltips.js";
+import { useOutletContext } from "react-router-dom";
+import cfg from "../../../../backend/approaches/config/config_approaches.json";
 
 const Chat = (config: typeof cfg) => {
     const defaultPromptTemplate = [
