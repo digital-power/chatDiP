@@ -194,13 +194,10 @@ async def chat(auth_claims: Dict[str, Any]):
         else:
             approach = cast(Approach, current_app.config[CONFIG_CHAT_APPROACH])
 
-        result = await approach.run(
-            request_json["messages"],
-            stream=request_json.get("stream", False),
-            context=context,
-            session_state=request_json.get("session_state"),
+        r = await approach.run(
+            request_json["messages"], context=context, session_state=request_json.get("session_state")
         )
-        return jsonify(result)
+        return jsonify(r)
     except Exception as error:
         return error_response(error, "/chat")
 
@@ -366,7 +363,7 @@ async def _build_usecase_clients(
     azure_storage_account: str,
     azure_storage_container: str,
     azure_credential: DefaultAzureCredential,
-) -> Dict[str, SearchClient]:
+) -> tuple[dict[Any, SearchClient], dict[Any, ContainerClient]]:
     """Builds search and blob clients for the different use cases
 
     Args:
@@ -613,7 +610,7 @@ async def setup_clients():
     )
 
     current_app.config[CONFIG_CHAT_APPROACH] = ChatReadRetrieveReadApproach(
-        search_client=search_clients,
+        search_clients=search_clients,
         openai_client=openai_client,
         auth_helper=auth_helper,
         chatgpt_model=OPENAI_CHATGPT_MODEL,
