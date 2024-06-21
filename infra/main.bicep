@@ -9,6 +9,12 @@ param environmentName string
 @description('Primary location for all resources')
 param location string
 
+param resourceGroupCreatedBy string = 'Myrthe Lammerse'
+param resourceGroupProject string = 'ChatDIP'
+param resourceGroupProjectCode string = 'ZO'
+param resourceGroupPurpose string = 'Internal Project'
+param resourceGroupEndDate string = '31-12-2024'
+
 param appServicePlanName string = '' // Set in main.parameters.json
 param backendServiceName string = '' // Set in main.parameters.json
 param resourceGroupName string = '' // Set in main.parameters.json
@@ -186,7 +192,14 @@ param useLocalHtmlParser bool = false
 
 var abbrs = loadJsonContent('abbreviations.json')
 var resourceToken = toLower(uniqueString(subscription().id, environmentName, location))
-var tags = { 'azd-env-name': environmentName }
+var tags = {
+    'azd-env-name': environmentName
+    'CreatedBy': resourceGroupCreatedBy
+    'Project': resourceGroupProject
+    'ProjectCode': resourceGroupProjectCode
+    'Purpose': resourceGroupPurpose
+    'EndDate': resourceGroupEndDate
+}
 
 var tenantIdForAuth = !empty(authTenantId) ? authTenantId : tenantId
 var authenticationIssuerUri = '${environment().authentication.loginEndpoint}${tenantIdForAuth}/v2.0'
