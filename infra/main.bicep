@@ -9,16 +9,9 @@ param environmentName string
 @description('Primary location for all resources')
 param location string
 
-param resourceGroupCreatedBy string = 'Myrthe Lammerse'
-param resourceGroupProject string = 'ChatDIP'
-param resourceGroupProjectCode string = 'ZO'
-param resourceGroupPurpose string = 'Internal Project'
-param resourceGroupEndDate string = '31-12-2024'
-
 param appServicePlanName string = '' // Set in main.parameters.json
 param backendServiceName string = '' // Set in main.parameters.json
 param resourceGroupName string = '' // Set in main.parameters.json
-
 
 param applicationInsightsDashboardName string = '' // Set in main.parameters.json
 param applicationInsightsName string = '' // Set in main.parameters.json
@@ -39,8 +32,7 @@ var actualSearchServiceSemanticRankerLevel = (searchServiceSkuName == 'free') ? 
 param storageAccountName string = '' // Set in main.parameters.json
 param storageResourceGroupName string = '' // Set in main.parameters.json
 param storageResourceGroupLocation string = location
-param storageContainerNames array // Set in main.parameters.json
-param storageDefaultContainerName string = 'content'
+param storageContainerName string = 'content'
 param storageSkuName string // Set in main.parameters.json
 
 param userStorageAccountName string = ''
@@ -51,9 +43,11 @@ param appServiceSkuName string // Set in main.parameters.json
 @allowed([ 'azure', 'openai', 'azure_custom' ])
 param openAiHost string // Set in main.parameters.json
 param isAzureOpenAiHost bool = startsWith(openAiHost, 'azure')
+param deployAzureOpenAi bool = openAiHost == 'azure'
 param azureOpenAiCustomUrl string = ''
 param azureOpenAiApiVersion string = ''
-
+@secure()
+param azureOpenAiApiKey string = ''
 param openAiServiceName string = ''
 param openAiResourceGroupName string = ''
 
@@ -74,6 +68,7 @@ param openAiResourceGroupLocation string
 
 param openAiSkuName string = 'S0'
 
+@secure()
 param openAiApiKey string = ''
 param openAiApiOrganization string = ''
 
@@ -125,7 +120,6 @@ var embedding = {
 param gpt4vModelName string = 'gpt-4o'
 param gpt4vDeploymentName string = 'gpt-4o'
 param gpt4vModelVersion string = '2024-05-13'
-
 param gpt4vDeploymentCapacity int = 10
 
 param tenantId string = tenant().tenantId
@@ -192,15 +186,7 @@ param useLocalHtmlParser bool = false
 
 var abbrs = loadJsonContent('abbreviations.json')
 var resourceToken = toLower(uniqueString(subscription().id, environmentName, location))
-var tags = {
-    'azd-env-name': environmentName
-    'CreatedBy': resourceGroupCreatedBy
-    'Project': resourceGroupProject
-    'ProjectCode': resourceGroupProjectCode
-    'Purpose': resourceGroupPurpose
-    'EndDate': resourceGroupEndDate
-}
-var computerVisionName = !empty(computerVisionServiceName) ? computerVisionServiceName : '${abbrs.cognitiveServicesComputerVision}${resourceToken}'
+var tags = { 'azd-env-name': environmentName }
 
 var tenantIdForAuth = !empty(authTenantId) ? authTenantId : tenantId
 var authenticationIssuerUri = '${environment().authentication.loginEndpoint}${tenantIdForAuth}/v2.0'
@@ -307,7 +293,7 @@ module backend 'core/host/appservice.bicep' = {
     alwaysOn: appServiceSkuName != 'F1'
     appSettings: {
       AZURE_STORAGE_ACCOUNT: storage.outputs.name
-      AZURE_STORAGE_CONTAINER: storageDefaultContainerName
+      AZURE_STORAGE_CONTAINER: storageContainerName
       AZURE_SEARCH_INDEX: searchIndexName
       AZURE_SEARCH_SERVICE: searchService.outputs.name
       AZURE_SEARCH_SEMANTIC_RANKER: actualSearchServiceSemanticRankerLevel
@@ -322,17 +308,18 @@ module backend 'core/host/appservice.bicep' = {
       USE_SPEECH_OUTPUT_AZURE: useSpeechOutputAzure
       // Shared by all OpenAI deployments
       OPENAI_HOST: openAiHost
-      AZURE_OPENAI_CUSTOM_URL: azureOpenAiCustomUrl
-      AZURE_OPENAI_API_VERSION: azureOpenAiApiVersion
       AZURE_OPENAI_EMB_MODEL_NAME: embedding.modelName
       AZURE_OPENAI_EMB_DIMENSIONS: embedding.dimensions
       AZURE_OPENAI_CHATGPT_MODEL: chatGpt.modelName
       AZURE_OPENAI_GPT4V_MODEL: gpt4vModelName
       // Specific to Azure OpenAI
-      AZURE_OPENAI_SERVICE: isAzureOpenAiHost ? openAi.outputs.name : ''
+      AZURE_OPENAI_SERVICE: isAzureOpenAiHost && deployAzureOpenAi ? openAi.outputs.name : ''
       AZURE_OPENAI_CHATGPT_DEPLOYMENT: chatGpt.deploymentName
       AZURE_OPENAI_EMB_DEPLOYMENT: embedding.deploymentName
       AZURE_OPENAI_GPT4V_DEPLOYMENT: useGPT4V ? gpt4vDeploymentName : ''
+      AZURE_OPENAI_API_VERSION: azureOpenAiApiVersion
+      AZURE_OPENAI_API_KEY: azureOpenAiApiKey
+      AZURE_OPENAI_CUSTOM_URL: azureOpenAiCustomUrl
       // Used only with non-Azure OpenAI deployments
       OPENAI_API_KEY: openAiApiKey
       OPENAI_ORGANIZATION: openAiApiOrganization
@@ -404,7 +391,7 @@ var openAiDeployments = concat(defaultOpenAiDeployments, useGPT4V ? [
     }
   ] : [])
 
-module openAi 'core/ai/cognitiveservices.bicep' = if (isAzureOpenAiHost) {
+module openAi 'core/ai/cognitiveservices.bicep' = if (isAzureOpenAiHost && deployAzureOpenAi) {
   name: 'openai'
   scope: openAiResourceGroup
   params: {
@@ -513,27 +500,9 @@ module storage 'core/storage/storage-account.bicep' = {
       enabled: true
       days: 2
     }
-    containers: storageContainerNames
-  }
-}
-
-module userStorage 'core/storage/storage-account.bicep' = if (useUserUpload) {
-  name: 'user-storage'
-  scope: storageResourceGroup
-  params: {
-    name: !empty(userStorageAccountName) ? userStorageAccountName : 'user${abbrs.storageStorageAccounts}${resourceToken}'
-    location: storageResourceGroupLocation
-    tags: tags
-    allowBlobPublicAccess: false
-    allowSharedKeyAccess: false
-    publicNetworkAccess: 'Enabled'
-    isHnsEnabled: true
-    sku: {
-      name: storageSkuName
-    }
     containers: [
       {
-        name: userStorageContainerName
+        name: storageContainerName
         publicAccess: 'None'
       }
     ]
@@ -567,7 +536,7 @@ module userStorage 'core/storage/storage-account.bicep' = if (useUserUpload) {
 // USER ROLES
 var principalType = empty(runningOnGh) && empty(runningOnAdo) ? 'User' : 'ServicePrincipal'
 
-module openAiRoleUser 'core/security/role.bicep' = if (isAzureOpenAiHost) {
+module openAiRoleUser 'core/security/role.bicep' = if (isAzureOpenAiHost && deployAzureOpenAi) {
   scope: openAiResourceGroup
   name: 'openai-role-user'
   params: {
@@ -659,7 +628,7 @@ module searchSvcContribRoleUser 'core/security/role.bicep' = {
 }
 
 // SYSTEM IDENTITIES
-module openAiRoleBackend 'core/security/role.bicep' = if (isAzureOpenAiHost) {
+module openAiRoleBackend 'core/security/role.bicep' = if (isAzureOpenAiHost && deployAzureOpenAi) {
   scope: openAiResourceGroup
   name: 'openai-role-backend'
   params: {
@@ -669,7 +638,7 @@ module openAiRoleBackend 'core/security/role.bicep' = if (isAzureOpenAiHost) {
   }
 }
 
-module openAiRoleSearchService 'core/security/role.bicep' = if (isAzureOpenAiHost && useIntegratedVectorization) {
+module openAiRoleSearchService 'core/security/role.bicep' = if (isAzureOpenAiHost && deployAzureOpenAi && useIntegratedVectorization) {
   scope: openAiResourceGroup
   name: 'openai-role-searchservice'
   params: {
@@ -864,16 +833,12 @@ output AZURE_OPENAI_CHATGPT_MODEL string = chatGpt.modelName
 output AZURE_OPENAI_GPT4V_MODEL string = gpt4vModelName
 
 // Specific to Azure OpenAI
-output AZURE_OPENAI_SERVICE string = isAzureOpenAiHost ? openAi.outputs.name : ''
+output AZURE_OPENAI_SERVICE string = isAzureOpenAiHost && deployAzureOpenAi ? openAi.outputs.name : ''
 output AZURE_OPENAI_API_VERSION string = isAzureOpenAiHost ? azureOpenAiApiVersion : ''
 output AZURE_OPENAI_RESOURCE_GROUP string = isAzureOpenAiHost ? openAiResourceGroup.name : ''
 output AZURE_OPENAI_CHATGPT_DEPLOYMENT string = isAzureOpenAiHost ? chatGpt.deploymentName : ''
 output AZURE_OPENAI_EMB_DEPLOYMENT string = isAzureOpenAiHost ? embedding.deploymentName : ''
 output AZURE_OPENAI_GPT4V_DEPLOYMENT string = isAzureOpenAiHost ? gpt4vDeploymentName : ''
-
-// Used only with non-Azure OpenAI deployments
-output OPENAI_API_KEY string = (openAiHost == 'openai') ? openAiApiKey : ''
-output OPENAI_ORGANIZATION string = (openAiHost == 'openai') ? openAiApiOrganization : ''
 
 output AZURE_SPEECH_SERVICE_ID string = useSpeechOutputAzure ? speech.outputs.id : ''
 output AZURE_SPEECH_SERVICE_LOCATION string = useSpeechOutputAzure ? speech.outputs.location : ''
@@ -890,7 +855,7 @@ output AZURE_SEARCH_SEMANTIC_RANKER string = actualSearchServiceSemanticRankerLe
 output AZURE_SEARCH_SERVICE_ASSIGNED_USERID string = searchService.outputs.principalId
 
 output AZURE_STORAGE_ACCOUNT string = storage.outputs.name
-output AZURE_STORAGE_CONTAINER string = storageDefaultContainerName
+output AZURE_STORAGE_CONTAINER string = storageContainerName
 output AZURE_STORAGE_RESOURCE_GROUP string = storageResourceGroup.name
 
 output AZURE_USERSTORAGE_ACCOUNT string = useUserUpload ? userStorage.outputs.name : ''
