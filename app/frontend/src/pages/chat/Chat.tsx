@@ -270,14 +270,6 @@ const Chat = (config: typeof cfg) => {
         setMinimumRerankerScore(parseFloat(newValue || "0"));
     };
 
-    const onMinimumSearchScoreChange = (_ev?: React.SyntheticEvent<HTMLElement, Event>, newValue?: string) => {
-        setMinimumSearchScore(parseFloat(newValue || "0"));
-    };
-
-    const onMinimumRerankerScoreChange = (_ev?: React.SyntheticEvent<HTMLElement, Event>, newValue?: string) => {
-        setMinimumRerankerScore(parseFloat(newValue || "0"));
-    };
-
     const onRetrieveCountChange = (_ev?: React.SyntheticEvent<HTMLElement, Event>, newValue?: string) => {
         setRetrieveCount(parseInt(newValue || "3"));
     };
@@ -562,30 +554,6 @@ const Chat = (config: typeof cfg) => {
                         step={0.01}
                         defaultValue={minimumSearchScore.toString()}
                         onChange={onMinimumSearchScoreChange}
-                    />
-
-                    <SpinButton
-                        className={styles.chatSettingsSeparator}
-                        label="Minimum reranker score"
-                        min={1}
-                        max={4}
-                        step={0.1}
-                        defaultValue={minimumRerankerScore.toString()}
-                        onChange={onMinimumRerankerScoreChange}
-                    />
-
-                    <SpinButton
-                        className={styles.chatSettingsSeparator}
-                        label="Retrieve this many search results:"
-                        type="number"
-                        min={1}
-                        max={50}
-                        defaultValue={retrieveCount.toString()}
-                        onChange={onRetrieveCountChange}
-                        aria-labelledby={retrieveCountId}
-                        onRenderLabel={(props: ITextFieldProps | undefined) => (
-                            <HelpCallout labelId={retrieveCountId} fieldId={retrieveCountFieldId} helpText={toolTipText.retrieveNumber} label={props?.label} />
-                        )}
                     />
 
                     <TextField
