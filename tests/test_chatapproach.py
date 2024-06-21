@@ -165,7 +165,7 @@ async def test_search_results_filtering_by_scores(
     monkeypatch, minimum_search_score, minimum_reranker_score, expected_result_count
 ):
     chat_approach = ChatReadRetrieveReadApproach(
-        search_client=SearchClient(endpoint="", index_name="", credential=AzureKeyCredential("")),
+        search_clients={"test": SearchClient(endpoint="", index_name="", credential=AzureKeyCredential(""))},
         auth_helper=None,
         openai_client=None,
         chatgpt_model="gpt-35-turbo",
