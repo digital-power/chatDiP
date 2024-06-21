@@ -15,22 +15,21 @@ from azure.cognitiveservices.speech import (
     SpeechSynthesisResult,
     SpeechSynthesizer,
 )
-from azure.core.credentials import AzureKeyCredential
-from azure.core.credentials_async import AsyncTokenCredential
 from azure.core.exceptions import ResourceNotFoundError
 from azure.identity.aio import DefaultAzureCredential, get_bearer_token_provider
-from azure.keyvault.secrets.aio import SecretClient
 from azure.monitor.opentelemetry import configure_azure_monitor
 from azure.search.documents.aio import SearchClient
 from azure.search.documents.indexes.aio import SearchIndexClient
-from azure.storage.blob.aio import BlobServiceClient, ContainerClient
+from azure.storage.blob.aio import ContainerClient
 from azure.storage.blob.aio import StorageStreamDownloader as BlobDownloader
 from azure.storage.filedatalake.aio import FileSystemClient
 from azure.storage.filedatalake.aio import StorageStreamDownloader as DatalakeDownloader
 from openai import AsyncAzureOpenAI, AsyncOpenAI
 from opentelemetry.instrumentation.aiohttp_client import AioHttpClientInstrumentor
 from opentelemetry.instrumentation.asgi import OpenTelemetryMiddleware
-from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
+from opentelemetry.instrumentation.httpx import (
+    HTTPXClientInstrumentor,
+)
 from opentelemetry.instrumentation.openai import OpenAIInstrumentor
 from quart import (
     Blueprint,
@@ -134,7 +133,7 @@ async def content_file(usecase: str, path: str, auth_claims: Dict[str, Any]):
         path_parts = path.rsplit("#page=", 1)
         path = path_parts[0]
     logging.info("Opening file %s for usecase %s", path, usecase)
-    blob_container_client: ContainerClient = current_app.config[CONFIG_BLOB_CONTAINER_CLIENTS][usecase]
+    blob_container_client: ContainerClient = current_app.config[CONFIG_BLOB_CONTAINER_CLIENTS]
     blob: Union[BlobDownloader, DatalakeDownloader]
     try:
         blob = await blob_container_client.get_blob_client(path).download_blob()
@@ -197,6 +196,7 @@ async def chat(auth_claims: Dict[str, Any]):
 
         result = await approach.run(
             request_json["messages"],
+            stream=request_json.get("stream", False),
             context=context,
             session_state=request_json.get("session_state"),
         )
@@ -221,15 +221,15 @@ async def chat_stream(auth_claims: Dict[str, Any]):
         else:
             approach = cast(Approach, current_app.config[CONFIG_CHAT_APPROACH])
 
-        result = await approach.run_stream(
-            request_json["messages"],
-            context=context,
-            session_state=request_json.get("session_state"),
-        )
-        response = await make_response(format_as_ndjson(result))
-        response.timeout = None  # type: ignore
-        response.mimetype = "application/json-lines"
-        return response
+            result = await approach.run_stream(
+                request_json["messages"],
+                context=context,
+                session_state=request_json.get("session_state"),
+            )
+            response = await make_response(format_as_ndjson(result))
+            response.timeout = None  # type: ignore
+            response.mimetype = "application/json-lines"
+            return response
     except Exception as error:
         return error_response(error, "/chat")
 
@@ -254,39 +254,6 @@ def config():
             "showSpeechOutputAzure": current_app.config[CONFIG_SPEECH_OUTPUT_AZURE_ENABLED],
         }
     )
-
-
-async def _build_usecase_clients(
-    azure_search_service: str,
-    search_credential: Union[AsyncTokenCredential, AzureKeyCredential],
-    blob_client: BlobServiceClient,
-):
-    """Builds search and blob clients for the different use cases
-
-    Args:
-        azure_search_service (str): The Azure search service name
-        search_credential (Union[AsyncTokenCredential, AzureKeyCredential]): The search credential to use
-        blob_client (BlobServiceClient): The blob client to use
-
-    Returns:
-        Dict[str, SearchClient]: A dictionary of search clients for the different use cases
-    """
-    search_clients, blob_clients = {}, {}
-
-    # Load predefined use cases from config file
-    usecases = load_approach_configs()
-
-    # Setup and store search/blob clients for the different use cases
-    for usecase in usecases:
-        search_clients[usecase["id"]] = SearchClient(
-            endpoint=f"https://{azure_search_service}.search.windows.net",
-            index_name=usecase["index_name"],
-            credential=search_credential,
-        )
-
-        blob_clients[usecase["id"]] = blob_client.get_container_client(usecase["container"])
-
-    return search_clients, blob_clients
 
 
 @bp.route("/speech", methods=["POST"])
@@ -393,21 +360,64 @@ async def list_uploaded(auth_claims: dict[str, Any]):
     return jsonify(files), 200
 
 
+async def _build_usecase_clients(
+    azure_search_service: str,
+    azure_search_index: str,
+    azure_storage_account: str,
+    azure_storage_container: str,
+    azure_credential: DefaultAzureCredential,
+) -> Dict[str, SearchClient]:
+    """Builds search and blob clients for the different use cases
+
+    Args:
+        azure_search_service (str): The Azure search service name
+        azure_search_index (str): The azure search index name
+        azure_storage_account (str): The azure storage account name
+        azure_storage_container (str): The azure storage container name
+        azure_credential (DefaultAzureCredential): The azure credential to use
+
+    Returns:
+        Dict[str, SearchClient]: A dictionary of search clients for the different use cases
+    """
+    search_clients, blob_clients = {}, {}
+
+    # Load predefined use cases from config file
+    usecases = load_approach_configs()
+
+    # Setup and store search/blob clients for the different use cases
+    for usecase in usecases:
+        search_clients[usecase["id"]] = SearchClient(
+            endpoint=f"https://{azure_search_service}.search.windows.net",
+            index_name=usecase[azure_search_index],
+            credential=azure_credential,
+        )
+        blob_clients[usecase["id"]] = ContainerClient(
+            f"https://{azure_storage_account}.blob.core.windows.net",
+            usecase[azure_storage_container],
+            credential=azure_credential,
+        )
+
+    return search_clients, blob_clients
+
+
 @bp.before_app_serving
 async def setup_clients():
     # Replace these with your own values, either in environment variables or directly here
-    AZURE_KEY_VAULT_NAME = os.environ["AZURE_KEY_VAULT_NAME"]
     AZURE_STORAGE_ACCOUNT = os.environ["AZURE_STORAGE_ACCOUNT"]
+    AZURE_STORAGE_CONTAINER = os.environ["AZURE_STORAGE_CONTAINER"]
     AZURE_USERSTORAGE_ACCOUNT = os.environ.get("AZURE_USERSTORAGE_ACCOUNT")
     AZURE_USERSTORAGE_CONTAINER = os.environ.get("AZURE_USERSTORAGE_CONTAINER")
     AZURE_SEARCH_SERVICE = os.environ["AZURE_SEARCH_SERVICE"]
     AZURE_SEARCH_INDEX = os.environ["AZURE_SEARCH_INDEX"]
-    AZURE_SEARCH_SECRET_NAME = os.getenv("AZURE_SEARCH_SECRET_NAME")
+
     # Shared by all OpenAI deployments
     OPENAI_HOST = os.getenv("OPENAI_HOST", "azure")
     OPENAI_CHATGPT_MODEL = os.environ["AZURE_OPENAI_CHATGPT_MODEL"]
     OPENAI_EMB_MODEL = os.getenv("AZURE_OPENAI_EMB_MODEL_NAME", "text-embedding-ada-002")
     OPENAI_EMB_DIMENSIONS = int(os.getenv("AZURE_OPENAI_EMB_DIMENSIONS", 1536))
+
+    AZURE_USERSTORAGE_CONTAINER = os.environ.get("AZURE_USERSTORAGE_CONTAINER")
+
     # Used with Azure OpenAI deployments
     AZURE_OPENAI_SERVICE = os.getenv("AZURE_OPENAI_SERVICE")
     AZURE_OPENAI_GPT4V_DEPLOYMENT = os.environ.get("AZURE_OPENAI_GPT4V_DEPLOYMENT")
@@ -417,6 +427,7 @@ async def setup_clients():
     )
     AZURE_OPENAI_EMB_DEPLOYMENT = os.getenv("AZURE_OPENAI_EMB_DEPLOYMENT") if OPENAI_HOST.startswith("azure") else None
     AZURE_VISION_ENDPOINT = os.getenv("AZURE_VISION_ENDPOINT", "")
+
     # Used only with non-Azure OpenAI deployments
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
     OPENAI_ORGANIZATION = os.getenv("OPENAI_ORGANIZATION")
@@ -443,8 +454,8 @@ async def setup_clients():
     AZURE_SPEECH_VOICE = os.getenv("AZURE_SPEECH_VOICE", "en-US-AndrewMultilingualNeural")
 
     USE_GPT4V = os.getenv("USE_GPT4V", "").lower() == "true"
-    USE_USER_UPLOAD = os.getenv("USE_USER_UPLOAD", "").lower() == "true"
 
+    USE_USER_UPLOAD = os.getenv("USE_USER_UPLOAD", "").lower() == "true"
     USE_SPEECH_INPUT_BROWSER = os.getenv("USE_SPEECH_INPUT_BROWSER", "").lower() == "true"
     USE_SPEECH_OUTPUT_BROWSER = os.getenv("USE_SPEECH_OUTPUT_BROWSER", "").lower() == "true"
     USE_SPEECH_OUTPUT_AZURE = os.getenv("USE_SPEECH_OUTPUT_AZURE", "").lower() == "true"
@@ -455,36 +466,15 @@ async def setup_clients():
     # If you encounter a blocking error during a DefaultAzureCredential resolution, you can exclude the problematic credential by using a parameter (ex. exclude_shared_token_cache_credential=True)
     azure_credential = DefaultAzureCredential(exclude_shared_token_cache_credential=True)
 
-    # Fetch any necessary secrets from Key Vault
-    search_key = None
-    if AZURE_KEY_VAULT_NAME:
-        async with SecretClient(
-            vault_url=f"https://{AZURE_KEY_VAULT_NAME}.vault.azure.net", credential=azure_credential
-        ) as key_vault_client:
-            search_key = (
-                AZURE_SEARCH_SECRET_NAME and (await key_vault_client.get_secret(AZURE_SEARCH_SECRET_NAME)).value  # type: ignore[attr-defined]
-            )
-
     # Set up clients for AI Search and Storage
-    search_credential: Union[AsyncTokenCredential, AzureKeyCredential] = (
-        AzureKeyCredential(search_key) if search_key else azure_credential
-    )
-
-    search_index_client = SearchIndexClient(
-        endpoint=f"https://{AZURE_SEARCH_SERVICE}.search.windows.net",
-        credential=search_credential,
-    )
-
-    blob_client = BlobServiceClient(
-        account_url=f"https://{AZURE_STORAGE_ACCOUNT}.blob.core.windows.net",
-        credential=azure_credential,
-    )
 
     # Set up search and blob clients for the different use cases
     search_clients, blob_container_clients = await _build_usecase_clients(
         azure_search_service=AZURE_SEARCH_SERVICE,
-        search_credential=search_credential,
-        blob_client=blob_client,
+        azure_search_index=AZURE_SEARCH_INDEX,
+        azure_storage_account=AZURE_STORAGE_ACCOUNT,
+        azure_storage_container=AZURE_STORAGE_CONTAINER,
+        azure_credential=azure_credential,
     )
 
     # Set up authentication helper
@@ -496,6 +486,7 @@ async def setup_clients():
         )
         search_index = await search_index_client.get_index(AZURE_SEARCH_INDEX)
         await search_index_client.close()
+
     auth_helper = AuthenticationHelper(
         search_index=search_index,
         use_authentication=AZURE_USE_AUTHENTICATION,
@@ -530,11 +521,8 @@ async def setup_clients():
             search_images=USE_GPT4V,
         )
         search_info = await setup_search_info(
-            search_service=AZURE_SEARCH_SERVICE,
-            index_name=AZURE_SEARCH_INDEX,
-            azure_credential=azure_credential,
+            search_service=AZURE_SEARCH_SERVICE, index_name=AZURE_SEARCH_INDEX, azure_credential=azure_credential
         )
-
         text_embeddings_service = setup_embeddings_service(
             azure_credential=azure_credential,
             openai_host=OPENAI_HOST,
@@ -553,7 +541,6 @@ async def setup_clients():
 
     # Used by the OpenAI SDK
     openai_client: AsyncOpenAI
-
     if USE_SPEECH_OUTPUT_AZURE:
         if not AZURE_SPEECH_SERVICE_ID or AZURE_SPEECH_SERVICE_ID == "":
             raise ValueError("Azure speech resource not configured correctly, missing AZURE_SPEECH_SERVICE_ID")
@@ -567,20 +554,23 @@ async def setup_clients():
         current_app.config[CONFIG_CREDENTIAL] = azure_credential
 
     if OPENAI_HOST.startswith("azure"):
-        token_provider = get_bearer_token_provider(azure_credential, "https://cognitiveservices.azure.com/.default")
+        api_version = os.getenv("AZURE_OPENAI_API_VERSION") or "2024-03-01-preview"
 
         if OPENAI_HOST == "azure_custom":
             endpoint = os.environ["AZURE_OPENAI_CUSTOM_URL"]
         else:
             endpoint = f"https://{AZURE_OPENAI_SERVICE}.openai.azure.com"
 
-        api_version = os.getenv("AZURE_OPENAI_API_VERSION") or "2024-03-01-preview"
+        if api_key := os.getenv("AZURE_OPENAI_API_KEY"):
+            openai_client = AsyncAzureOpenAI(api_version=api_version, azure_endpoint=endpoint, api_key=api_key)
+        else:
+            token_provider = get_bearer_token_provider(azure_credential, "https://cognitiveservices.azure.com/.default")
+            openai_client = AsyncAzureOpenAI(
+                api_version=api_version,
+                azure_endpoint=endpoint,
+                azure_ad_token_provider=token_provider,
+            )
 
-        openai_client = AsyncAzureOpenAI(
-            api_version=api_version,
-            azure_endpoint=endpoint,
-            azure_ad_token_provider=token_provider,
-        )
     elif OPENAI_HOST == "local":
         openai_client = AsyncOpenAI(
             base_url=os.environ["OPENAI_BASE_URL"],
@@ -601,7 +591,6 @@ async def setup_clients():
     current_app.config[CONFIG_SEMANTIC_RANKER_DEPLOYED] = AZURE_SEARCH_SEMANTIC_RANKER != "disabled"
     current_app.config[CONFIG_VECTOR_SEARCH_ENABLED] = os.getenv("USE_VECTORS", "").lower() != "false"
     current_app.config[CONFIG_USER_UPLOAD_ENABLED] = bool(USE_USER_UPLOAD)
-
     current_app.config[CONFIG_SPEECH_INPUT_ENABLED] = USE_SPEECH_INPUT_BROWSER
     current_app.config[CONFIG_SPEECH_OUTPUT_BROWSER_ENABLED] = USE_SPEECH_OUTPUT_BROWSER
     current_app.config[CONFIG_SPEECH_OUTPUT_AZURE_ENABLED] = USE_SPEECH_OUTPUT_AZURE
@@ -624,7 +613,7 @@ async def setup_clients():
     )
 
     current_app.config[CONFIG_CHAT_APPROACH] = ChatReadRetrieveReadApproach(
-        search_clients=search_clients,
+        search_client=search_clients,
         openai_client=openai_client,
         auth_helper=auth_helper,
         chatgpt_model=OPENAI_CHATGPT_MODEL,
@@ -681,21 +670,6 @@ async def setup_clients():
             query_language=AZURE_SEARCH_QUERY_LANGUAGE,
             query_speller=AZURE_SEARCH_QUERY_SPELLER,
         )
-
-    current_app.config[CONFIG_CHAT_APPROACH] = ChatReadRetrieveReadApproach(
-        search_clients=search_clients,
-        openai_client=openai_client,
-        auth_helper=auth_helper,
-        chatgpt_model=OPENAI_CHATGPT_MODEL,
-        chatgpt_deployment=AZURE_OPENAI_CHATGPT_DEPLOYMENT,
-        embedding_model=OPENAI_EMB_MODEL,
-        embedding_deployment=AZURE_OPENAI_EMB_DEPLOYMENT,
-        embedding_dimensions=OPENAI_EMB_DIMENSIONS,
-        sourcepage_field=KB_FIELDS_SOURCEPAGE,
-        content_field=KB_FIELDS_CONTENT,
-        query_language=AZURE_SEARCH_QUERY_LANGUAGE,
-        query_speller=AZURE_SEARCH_QUERY_SPELLER,
-    )
 
 
 @bp.after_app_serving
