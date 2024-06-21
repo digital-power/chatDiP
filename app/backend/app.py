@@ -385,12 +385,12 @@ async def _build_usecase_clients(
     for usecase in usecases:
         search_clients[usecase["id"]] = SearchClient(
             endpoint=f"https://{azure_search_service}.search.windows.net",
-            index_name=usecase[azure_search_index],
+            index_name=azure_search_index,
             credential=azure_credential,
         )
         blob_clients[usecase["id"]] = ContainerClient(
             f"https://{azure_storage_account}.blob.core.windows.net",
-            usecase[azure_storage_container],
+            azure_storage_container,
             credential=azure_credential,
         )
 
