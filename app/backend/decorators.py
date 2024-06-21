@@ -10,7 +10,7 @@ from core.authentication import AuthError
 from error import error_response
 
 
-def authenticated_path(route_fn: Callable[[str, Dict[str, Any]], Any]):
+def authenticated_path(route_fn: Callable[[str, str, Dict[str, Any]], Any]):
     """
     Decorator for routes that request a specific file that might require access control enforcement
     """
@@ -23,7 +23,6 @@ def authenticated_path(route_fn: Callable[[str, Dict[str, Any]], Any]):
         # If authentication is enabled, validate the user can access the file
         auth_helper = current_app.config[CONFIG_AUTH_CLIENT]
         search_client = current_app.config[CONFIG_SEARCH_CLIENTS][usecase]
-        authorized = False
         try:
             auth_claims = await auth_helper.get_auth_claims_if_enabled(request.headers)
             authorized = await auth_helper.check_path_auth(path, auth_claims, search_client)
@@ -43,7 +42,8 @@ def authenticated_path(route_fn: Callable[[str, Dict[str, Any]], Any]):
 
 def authenticated(route_fn: Callable[[Dict[str, Any]], Any]):
     """
-    Decorator for routes that might require access control. Unpacks Authorization header information into an auth_claims dictionary
+    Decorator for routes that might require access control.
+    Unpacks Authorization header information into an auth_claims dictionary
     """
 
     @wraps(route_fn)
