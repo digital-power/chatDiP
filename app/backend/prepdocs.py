@@ -112,6 +112,7 @@ def setup_embeddings_service(
     openai_host: str,
     openai_model_name: str,
     openai_service: Union[str, None],
+    openai_custom_url: Union[str, None],
     openai_deployment: Union[str, None],
     openai_dimensions: int,
     openai_key: Union[str, None],
@@ -129,6 +130,7 @@ def setup_embeddings_service(
         )
         return AzureOpenAIEmbeddingService(
             open_ai_service=openai_service,
+            open_ai_custom_url=openai_custom_url,
             open_ai_deployment=openai_deployment,
             open_ai_model_name=openai_model_name,
             open_ai_dimensions=openai_dimensions,
@@ -334,10 +336,16 @@ if __name__ == "__main__":
         action="store_true",
         help="Don't compute embeddings in batch for the sections",
     )
+
+    parser.add_argument(
+        "--openaicustomurl",
+        required=False,
+        help="Optional. Use this custom OpenAI URL instead of the default OpenAI URL",
+    )
     parser.add_argument(
         "--openaikey",
         required=False,
-        help="Optional. Use this Azure OpenAI account key instead of the current user identity to login (use az login to set current user for Azure). This is required only when using non-Azure endpoints.",
+        help="Optional. Use this OpenAI account key instead of the current Azure user identity to login.",
     )
     parser.add_argument(
         "--openaiorg",
@@ -448,6 +456,7 @@ if __name__ == "__main__":
         openai_host=args.openaihost,
         openai_model_name=args.openaimodelname,
         openai_service=args.openaiservice,
+        openai_custom_url=args.openaicustomurl,
         openai_deployment=args.openaideployment,
         openai_dimensions=args.openaidimensions,
         openai_key=clean_key_if_exists(args.openaikey),
