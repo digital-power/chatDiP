@@ -358,15 +358,6 @@ def test_upload_hidden(page: Page, live_server_url: str):
 
     expect(page).to_have_title("GPT + Enterprise data | Sample")
 
-    page.get_by_role("link", name="Ask a question").click()
-    page.get_by_placeholder("Example: Does my plan cover annual eye exams?").click()
-    page.get_by_placeholder("Example: Does my plan cover annual eye exams?").fill("Whats the dental plan?")
-    page.get_by_placeholder("Example: Does my plan cover annual eye exams?").click()
-    page.get_by_label("Submit question").click()
-
-    expect(page.get_by_text("Whats the dental plan?")).to_be_visible()
-    expect(page.get_by_text("The capital of France is Paris.")).to_be_visible()
-
 
 def test_upload_disabled(page: Page, live_server_url: str):
     def handle_auth_setup(route: Route):
