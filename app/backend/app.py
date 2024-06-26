@@ -133,7 +133,7 @@ async def content_file(usecase: str, path: str, auth_claims: Dict[str, Any]):
         path_parts = path.rsplit("#page=", 1)
         path = path_parts[0]
     logging.info("Opening file %s for usecase %s", path, usecase)
-    blob_container_client: ContainerClient = current_app.config[CONFIG_BLOB_CONTAINER_CLIENTS]
+    blob_container_client: ContainerClient = current_app.config[CONFIG_BLOB_CONTAINER_CLIENTS][usecase]
     blob: Union[BlobDownloader, DatalakeDownloader]
     try:
         blob = await blob_container_client.get_blob_client(path).download_blob()

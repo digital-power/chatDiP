@@ -41,7 +41,7 @@ class MockAiohttpClientResponse(aiohttp.ClientResponse):
 async def test_content_file(monkeypatch, mock_env, mock_acs_search):
     class MockTransport(AsyncHttpTransport):
         async def send(self, request: HttpRequest, **kwargs) -> AioHttpTransportResponse:
-            if request.url.endswith("notfound.pdf") or request.url.endswith("userdoc.pdf"):
+            if request.url.endswith("notfound.pdf"):
                 raise ResourceNotFoundError(MockAiohttpClientResponse404(request.url, b""))
             else:
                 return AioHttpTransportResponse(
@@ -69,6 +69,7 @@ async def test_content_file(monkeypatch, mock_env, mock_acs_search):
         async def close(self):
             pass
 
+    # Then we can plug this into any SDK via kwargs:
     blob_client = BlobServiceClient(
         f"https://{os.environ['AZURE_STORAGE_ACCOUNT']}.blob.core.windows.net",
         credential=MockAzureCredential(),
@@ -82,15 +83,15 @@ async def test_content_file(monkeypatch, mock_env, mock_acs_search):
         quart_app.config.update({"blob_container_clients": {"demo": blob_container_client}})
 
         client = test_app.test_client()
-        response = await client.get("#/content/usecase/demo/notfound.pdf")
+        response = await client.get("/content/usecase/demo/notfound.pdf")
         assert response.status_code == 404
 
-        response = await client.get("#/content/usecase/demo/role_library.pdf")
+        response = await client.get("/content/usecase/demo/role_library.pdf")
         assert response.status_code == 200
         assert response.headers["Content-Type"] == "application/pdf"
         assert await response.get_data() == b"test content"
 
-        response = await client.get("#/content/usecase/demo/role_library.pdf#page=10")
+        response = await client.get("/content/usecase/demo/role_library.pdf#page=10")
         assert response.status_code == 200
         assert response.headers["Content-Type"] == "application/pdf"
         assert await response.get_data() == b"test content"
@@ -146,5 +147,5 @@ async def test_content_file_useruploaded_notfound(monkeypatch, auth_client, mock
         mock_download_file,
     )
 
-    response = await auth_client.get("#/usecase/demo/content/userdoc.pdf", headers={"Authorization": "Bearer test"})
+    response = await auth_client.get("/content/usecase/demo/userdoc.pdf", headers={"Authorization": "Bearer test"})
     assert response.status_code == 404
