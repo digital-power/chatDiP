@@ -49,7 +49,6 @@ const Chat = (config: typeof cfg) => {
     const configArray = Object.values(config);
     type Usecase = (typeof configArray)[0];
 
-    // const [isConfigPanelOpen, setIsConfigPanelOpen] = useState(false);
     const [isConfigPanelOpen, setIsConfigPanelOpen, currentUsecase] = useOutletContext<[boolean, (arg: boolean) => void, Usecase]>();
     const [promptTemplate, setPromptTemplate] = useState<string>(defaultPromptTemplate);
     const [temperature, setTemperature] = useState<number>(0.3);
