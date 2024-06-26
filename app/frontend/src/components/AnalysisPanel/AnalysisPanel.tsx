@@ -55,22 +55,6 @@ export const AnalysisPanel = ({ answer, activeTab, activeCitation, citationHeigh
         fetchCitation();
     }, []);
 
-    const renderFileViewer = () => {
-        if (!activeCitation) {
-            return null;
-        }
-
-        const fileExtension = activeCitation.split(".").pop()?.toLowerCase();
-        switch (fileExtension) {
-            case "png":
-                return <img src={citation} className={styles.citationImg} alt="Citation Image" />;
-            case "md":
-                return <MarkdownViewer src={activeCitation} />;
-            default:
-                return <iframe title="Citation" src={citation} width="100%" height={citationHeight} />;
-        }
-    };
-
     const pivotStyles: Partial<IPivotStyles> = {
         linkContent: { fontFamily: "Sansation" },
         linkIsSelected: {
@@ -113,7 +97,6 @@ export const AnalysisPanel = ({ answer, activeTab, activeCitation, citationHeigh
                 ) : (
                     <iframe title="Citation" src={citation} width="100%" height={citationHeight} />
                 )}
-                {renderFileViewer()}
             </PivotItem>
         </Pivot>
     );
