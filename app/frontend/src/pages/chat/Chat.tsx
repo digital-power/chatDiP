@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect } from "react";
 import { Checkbox, Panel, DefaultButton, TextField, ITextFieldProps, ICheckboxProps } from "@fluentui/react";
+import { SparkleFilled } from "@fluentui/react-icons";
 import { useId } from "@fluentui/react-hooks";
 import readNDJSONStream from "ndjson-readablestream";
 
@@ -49,7 +50,6 @@ const Chat = (config: typeof cfg) => {
     const configArray = Object.values(config);
     type Usecase = (typeof configArray)[0];
 
-    // const [isConfigPanelOpen, setIsConfigPanelOpen] = useState(false);
     const [isConfigPanelOpen, setIsConfigPanelOpen, currentUsecase] = useOutletContext<[boolean, (arg: boolean) => void, Usecase]>();
     const [promptTemplate, setPromptTemplate] = useState<string>(defaultPromptTemplate);
     const [temperature, setTemperature] = useState<number>(0.3);
@@ -89,6 +89,10 @@ const Chat = (config: typeof cfg) => {
     const [showVectorOption, setShowVectorOption] = useState<boolean>(false);
     const [showUserUpload, setShowUserUpload] = useState<boolean>(false);
 
+    const [showSpeechInput, setShowSpeechInput] = useState<boolean>(false);
+    const [showSpeechOutputBrowser, setShowSpeechOutputBrowser] = useState<boolean>(false);
+    const [showSpeechOutputAzure, setShowSpeechOutputAzure] = useState<boolean>(false);
+
     useEffect(() => {
         // Reset state when usecase_id changes
         clearChat();
@@ -96,9 +100,6 @@ const Chat = (config: typeof cfg) => {
         // Use case needs to be set to current usecase id
         setRetrieveUsecase(currentUsecase?.id);
     }, [currentUsecase?.id]);
-    const [showSpeechInput, setShowSpeechInput] = useState<boolean>(false);
-    const [showSpeechOutputBrowser, setShowSpeechOutputBrowser] = useState<boolean>(false);
-    const [showSpeechOutputAzure, setShowSpeechOutputAzure] = useState<boolean>(false);
 
     const getConfig = async () => {
         configApi().then(config => {
@@ -374,7 +375,7 @@ const Chat = (config: typeof cfg) => {
                             />
                             <h1 className={styles.chatEmptyStateTitle}>Chat with your data</h1>
                             <h2 className={styles.chatEmptyStateSubtitle}>Ask anything or try an example</h2>
-                            <ExampleList onExampleClicked={onExampleClicked} currentUsecase={currentUsecase} />
+                            <ExampleList onExampleClicked={onExampleClicked} currentUsecase={currentUsecase} useGPT4V={useGPT4V} />
                         </div>
                     ) : (
                         <div className={styles.chatMessageStream}>
@@ -445,7 +446,7 @@ const Chat = (config: typeof cfg) => {
                     <div className={styles.chatInput}>
                         <QuestionInput
                             clearOnSend
-                            placeholder="Type a new question"
+                            placeholder="Type a new question (e.g. does my plan cover annual eye exams?)"
                             disabled={isLoading}
                             onSend={question => makeApiRequest(question)}
                             showSpeechInput={showSpeechInput}
@@ -549,11 +550,16 @@ const Chat = (config: typeof cfg) => {
                     <TextField
                         id={retrieveCountFieldId}
                         className={styles.chatSettingsSeparator}
-                        label="Minimum search score"
-                        min={0}
-                        step={0.01}
-                        defaultValue={minimumSearchScore.toString()}
-                        onChange={onMinimumSearchScoreChange}
+                        label="Retrieve this many search results:"
+                        type="number"
+                        min={1}
+                        max={50}
+                        defaultValue={retrieveCount.toString()}
+                        onChange={onRetrieveCountChange}
+                        aria-labelledby={retrieveCountId}
+                        onRenderLabel={(props: ITextFieldProps | undefined) => (
+                            <HelpCallout labelId={retrieveCountId} fieldId={retrieveCountFieldId} helpText={toolTipText.retrieveNumber} label={props?.label} />
+                        )}
                     />
 
                     <TextField
