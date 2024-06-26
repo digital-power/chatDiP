@@ -70,7 +70,7 @@ async def test_missing_env_vars():
 
 
 @pytest.mark.asyncio
-async def x(client):
+async def test_index(client):
     response = await client.get("/")
     assert response.status_code == 200
 
