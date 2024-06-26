@@ -218,15 +218,15 @@ async def chat_stream(auth_claims: Dict[str, Any]):
         else:
             approach = cast(Approach, current_app.config[CONFIG_CHAT_APPROACH])
 
-            result = await approach.run_stream(
-                request_json["messages"],
-                context=context,
-                session_state=request_json.get("session_state"),
-            )
-            response = await make_response(format_as_ndjson(result))
-            response.timeout = None  # type: ignore
-            response.mimetype = "application/json-lines"
-            return response
+        result = await approach.run_stream(
+            request_json["messages"],
+            context=context,
+            session_state=request_json.get("session_state"),
+        )
+        response = await make_response(format_as_ndjson(result))
+        response.timeout = None  # type: ignore
+        response.mimetype = "application/json-lines"
+        return response
     except Exception as error:
         return error_response(error, "/chat")
 
