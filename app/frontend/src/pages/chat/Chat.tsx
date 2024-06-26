@@ -35,6 +35,8 @@ import { useMsal } from "@azure/msal-react";
 import { TokenClaimsDisplay } from "../../components/TokenClaimsDisplay";
 import { GPT4VSettings } from "../../components/GPT4VSettings";
 import { toolTipText } from "../../i18n/tooltips.js";
+import { useOutletContext } from "react-router-dom";
+import cfg from "../../../../backend/approaches/config/config_approaches.json";
 
 const Chat = (config: typeof cfg) => {
     const defaultPromptTemplate = [
@@ -48,7 +50,6 @@ const Chat = (config: typeof cfg) => {
     const configArray = Object.values(config);
     type Usecase = (typeof configArray)[0];
 
-    // const [isConfigPanelOpen, setIsConfigPanelOpen] = useState(false);
     const [isConfigPanelOpen, setIsConfigPanelOpen, currentUsecase] = useOutletContext<[boolean, (arg: boolean) => void, Usecase]>();
     const [promptTemplate, setPromptTemplate] = useState<string>(defaultPromptTemplate);
     const [temperature, setTemperature] = useState<number>(0.3);
@@ -88,6 +89,10 @@ const Chat = (config: typeof cfg) => {
     const [showVectorOption, setShowVectorOption] = useState<boolean>(false);
     const [showUserUpload, setShowUserUpload] = useState<boolean>(false);
 
+    const [showSpeechInput, setShowSpeechInput] = useState<boolean>(false);
+    const [showSpeechOutputBrowser, setShowSpeechOutputBrowser] = useState<boolean>(false);
+    const [showSpeechOutputAzure, setShowSpeechOutputAzure] = useState<boolean>(false);
+
     useEffect(() => {
         // Reset state when usecase_id changes
         clearChat();
@@ -95,9 +100,6 @@ const Chat = (config: typeof cfg) => {
         // Use case needs to be set to current usecase id
         setRetrieveUsecase(currentUsecase?.id);
     }, [currentUsecase?.id]);
-    const [showSpeechInput, setShowSpeechInput] = useState<boolean>(false);
-    const [showSpeechOutputBrowser, setShowSpeechOutputBrowser] = useState<boolean>(false);
-    const [showSpeechOutputAzure, setShowSpeechOutputAzure] = useState<boolean>(false);
 
     const getConfig = async () => {
         configApi().then(config => {
@@ -269,14 +271,6 @@ const Chat = (config: typeof cfg) => {
         setMinimumRerankerScore(parseFloat(newValue || "0"));
     };
 
-    const onMinimumSearchScoreChange = (_ev?: React.SyntheticEvent<HTMLElement, Event>, newValue?: string) => {
-        setMinimumSearchScore(parseFloat(newValue || "0"));
-    };
-
-    const onMinimumRerankerScoreChange = (_ev?: React.SyntheticEvent<HTMLElement, Event>, newValue?: string) => {
-        setMinimumRerankerScore(parseFloat(newValue || "0"));
-    };
-
     const onRetrieveCountChange = (_ev?: React.SyntheticEvent<HTMLElement, Event>, newValue?: string) => {
         setRetrieveCount(parseInt(newValue || "3"));
     };
@@ -381,7 +375,7 @@ const Chat = (config: typeof cfg) => {
                             />
                             <h1 className={styles.chatEmptyStateTitle}>Chat with your data</h1>
                             <h2 className={styles.chatEmptyStateSubtitle}>Ask anything or try an example</h2>
-                            <ExampleList onExampleClicked={onExampleClicked} currentUsecase={currentUsecase} />
+                            <ExampleList onExampleClicked={onExampleClicked} currentUsecase={currentUsecase} useGPT4V={useGPT4V} />
                         </div>
                     ) : (
                         <div className={styles.chatMessageStream}>
@@ -555,25 +549,6 @@ const Chat = (config: typeof cfg) => {
 
                     <TextField
                         id={retrieveCountFieldId}
-                        className={styles.chatSettingsSeparator}
-                        label="Minimum search score"
-                        min={0}
-                        step={0.01}
-                        defaultValue={minimumSearchScore.toString()}
-                        onChange={onMinimumSearchScoreChange}
-                    />
-
-                    <SpinButton
-                        className={styles.chatSettingsSeparator}
-                        label="Minimum reranker score"
-                        min={1}
-                        max={4}
-                        step={0.1}
-                        defaultValue={minimumRerankerScore.toString()}
-                        onChange={onMinimumRerankerScoreChange}
-                    />
-
-                    <SpinButton
                         className={styles.chatSettingsSeparator}
                         label="Retrieve this many search results:"
                         type="number"

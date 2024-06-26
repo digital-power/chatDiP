@@ -41,7 +41,7 @@ class MockAiohttpClientResponse(aiohttp.ClientResponse):
 async def test_content_file(monkeypatch, mock_env, mock_acs_search):
     class MockTransport(AsyncHttpTransport):
         async def send(self, request: HttpRequest, **kwargs) -> AioHttpTransportResponse:
-            if request.url.endswith("notfound.pdf") or request.url.endswith("userdoc.pdf"):
+            if request.url.endswith("notfound.pdf"):
                 raise ResourceNotFoundError(MockAiohttpClientResponse404(request.url, b""))
             else:
                 return AioHttpTransportResponse(
@@ -69,6 +69,7 @@ async def test_content_file(monkeypatch, mock_env, mock_acs_search):
         async def close(self):
             pass
 
+    # Then we can plug this into any SDK via kwargs:
     blob_client = BlobServiceClient(
         f"https://{os.environ['AZURE_STORAGE_ACCOUNT']}.blob.core.windows.net",
         credential=MockAzureCredential(),
@@ -146,5 +147,5 @@ async def test_content_file_useruploaded_notfound(monkeypatch, auth_client, mock
         mock_download_file,
     )
 
-    response = await auth_client.get("/content/userdoc.pdf", headers={"Authorization": "Bearer test"})
+    response = await auth_client.get("/content/usecase/demo/userdoc.pdf", headers={"Authorization": "Bearer test"})
     assert response.status_code == 404

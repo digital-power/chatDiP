@@ -11,12 +11,19 @@ export default defineConfig({
         rollupOptions: {
             output: {
                 manualChunks: id => {
+                    // @ts-ignore
                     if (id.includes("@fluentui/react-icons")) {
                         return "fluentui-icons";
-                    } else if (id.includes("@fluentui/react")) {
-                        return "fluentui-react";
-                    } else if (id.includes("node_modules")) {
-                        return "vendor";
+                    } else {
+                        // @ts-ignore
+                        if (id.includes("@fluentui/react")) {
+                            return "fluentui-react";
+                        } else {
+                            // @ts-ignore
+                            if (id.includes("node_modules")) {
+                                return "vendor";
+                            }
+                        }
                     }
                 }
             }
@@ -28,7 +35,6 @@ export default defineConfig({
             "/content/": "http://localhost:50505",
             "/auth_setup": "http://localhost:50505",
             "/.auth/me": "http://localhost:50505",
-            "/ask": "http://localhost:50505",
             "/chat": "http://localhost:50505",
             "/speech": "http://localhost:50505",
             "/config": "http://localhost:50505",

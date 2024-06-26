@@ -1,4 +1,5 @@
-import { Stack, Pivot, PivotItem } from "@fluentui/react";
+import { Stack, Pivot, PivotItem, IPivotStyles } from "@fluentui/react";
+import SyntaxHighlighter from "react-syntax-highlighter";
 
 import styles from "./AnalysisPanel.module.css";
 
@@ -54,19 +55,14 @@ export const AnalysisPanel = ({ answer, activeTab, activeCitation, citationHeigh
         fetchCitation();
     }, []);
 
-    const renderFileViewer = () => {
-        if (!activeCitation) {
-            return null;
-        }
-
-        const fileExtension = activeCitation.split(".").pop()?.toLowerCase();
-        switch (fileExtension) {
-            case "png":
-                return <img src={citation} className={styles.citationImg} alt="Citation Image" />;
-            case "md":
-                return <MarkdownViewer src={activeCitation} />;
-            default:
-                return <iframe title="Citation" src={citation} width="100%" height={citationHeight} />;
+    const pivotStyles: Partial<IPivotStyles> = {
+        linkContent: { fontFamily: "Sansation" },
+        linkIsSelected: {
+            selectors: {
+                ":before": {
+                    backgroundColor: "#044318"
+                }
+            }
         }
     };
 
@@ -96,7 +92,11 @@ export const AnalysisPanel = ({ answer, activeTab, activeCitation, citationHeigh
                 headerText="Citation"
                 headerButtonProps={isDisabledCitationTab ? pivotItemDisabledStyle : undefined}
             >
-                {renderFileViewer()}
+                {activeCitation?.endsWith(".png") ? (
+                    <img src={citation} className={styles.citationImg} />
+                ) : (
+                    <iframe title="Citation" src={citation} width="100%" height={citationHeight} />
+                )}
             </PivotItem>
         </Pivot>
     );
