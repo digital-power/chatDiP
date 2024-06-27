@@ -33,7 +33,7 @@ param searchIndexName string // Set in main.parameters.json
 param searchQueryLanguage string // Set in main.parameters.json
 param searchQuerySpeller string // Set in main.parameters.json
 param searchServiceSemanticRankerLevel string // Set in main.parameters.json
-var actualSearchServiceSemanticRankerLevel = (searchServiceSkuName == 'basic') ? 'disabled' : searchServiceSemanticRankerLevel
+var actualSearchServiceSemanticRankerLevel = (searchServiceSkuName == 'free') ? 'disabled' : searchServiceSemanticRankerLevel
 
 param storageAccountName string = '' // Set in main.parameters.json
 param storageResourceGroupName string = '' // Set in main.parameters.json
