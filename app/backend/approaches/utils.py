@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 
 
-def load_approach_configs():
+def load_approach_configs() -> list[dict]:
     """Load the configuration file for the approaches
 
     Returns:
@@ -11,7 +11,7 @@ def load_approach_configs():
     return json.load(open(Path(__file__).parent / "config" / "config_approaches.json"))
 
 
-def usecase_exists(usecase: str):
+def usecase_exists(usecase: str) -> bool:
     """Check if a usecase exists in the configuration file
 
     Args:
