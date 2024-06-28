@@ -387,9 +387,9 @@ async def _build_usecase_clients(
         if not isinstance(index_name, str):
             raise ValueError(f"Expected index_name to be a str, got {type(index_name)}")
 
-        container_name = usecase.get("container_name")
+        container_name = usecase.get("container")
         if not isinstance(container_name, str):
-            raise ValueError(f"Expected container_name to be a str, got {type(container_name)}")
+            raise ValueError(f"Expected container to be a str, got {type(container_name)}")
 
         search_clients[usecase_id] = SearchClient(
             endpoint=f"https://{azure_search_service}.search.windows.net",
