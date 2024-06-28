@@ -379,14 +379,27 @@ async def _build_usecase_clients(
 
     # Setup and store search/blob clients for the different use cases
     for usecase in usecases:
-        search_clients[usecase.get("id")] = SearchClient(
+        usecase_id = usecase.get("id")
+        if not isinstance(usecase_id, str):
+            raise ValueError(f"Expected usecase_id to be a str, got {type(usecase_id)}")
+
+        index_name = usecase.get("index_name")
+        if not isinstance(index_name, str):
+            raise ValueError(f"Expected index_name to be a str, got {type(index_name)}")
+
+        container_name = usecase.get("container_name")
+        if not isinstance(container_name, str):
+            raise ValueError(f"Expected container_name to be a str, got {type(container_name)}")
+
+        search_clients[usecase_id] = SearchClient(
             endpoint=f"https://{azure_search_service}.search.windows.net",
-            index_name=usecase.get("index_name"),
+            index_name=index_name,
             credential=azure_credential,
         )
-        blob_clients[usecase.get("id")] = ContainerClient(
+
+        blob_clients[usecase_id] = ContainerClient(
             account_url=f"https://{azure_storage_account}.blob.core.windows.net",
-            container_name=usecase.get("container_name"),
+            container_name=container_name,
             credential=azure_credential,
         )
 
