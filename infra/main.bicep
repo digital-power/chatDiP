@@ -183,7 +183,7 @@ param useSpeechOutputAzure bool = false
 @description('Show options to use vector embeddings for searching in the app UI')
 param useVectors bool = false
 @description('Use Built-in integrated Vectorization feature of AI Search to vectorize and ingest documents')
-param useIntegratedVectorization bool = false
+param useIntegratedVectorization bool = true
 
 @description('Enable user document upload feature')
 param useUserUpload bool = false
