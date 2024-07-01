@@ -306,7 +306,6 @@ module backend 'core/host/appservice.bicep' = {
     alwaysOn: appServiceSkuName != 'F1'
     appSettings: {
       AZURE_STORAGE_ACCOUNT: storage.outputs.name
-      AZURE_STORAGE_CONTAINER: storageContainerName
       AZURE_SEARCH_INDEX: searchIndexName
       AZURE_SEARCH_SERVICE: searchService.outputs.name
       AZURE_SEARCH_SEMANTIC_RANKER: actualSearchServiceSemanticRankerLevel
