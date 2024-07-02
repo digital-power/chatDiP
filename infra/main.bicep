@@ -183,7 +183,7 @@ param useSpeechOutputAzure bool = false
 @description('Show options to use vector embeddings for searching in the app UI')
 param useVectors bool = false
 @description('Use Built-in integrated Vectorization feature of AI Search to vectorize and ingest documents')
-param useIntegratedVectorization bool = false
+param useIntegratedVectorization bool = true
 
 @description('Enable user document upload feature')
 param useUserUpload bool = false
@@ -306,7 +306,6 @@ module backend 'core/host/appservice.bicep' = {
     alwaysOn: appServiceSkuName != 'F1'
     appSettings: {
       AZURE_STORAGE_ACCOUNT: storage.outputs.name
-      AZURE_STORAGE_CONTAINER: storageContainerName
       AZURE_SEARCH_INDEX: searchIndexName
       AZURE_SEARCH_SERVICE: searchService.outputs.name
       AZURE_SEARCH_SEMANTIC_RANKER: actualSearchServiceSemanticRankerLevel
@@ -473,7 +472,7 @@ module searchService 'core/search/search-services.bicep' = {
   name: 'search-service'
   scope: searchServiceResourceGroup
   params: {
-    name: !empty(searchServiceName) ? searchServiceName : 'gptkb-${resourceToken}'
+    name: !empty(searchServiceName) ? searchServiceName : 'search-service-aide-basic'
     location: !empty(searchServiceLocation) ? searchServiceLocation : location
     tags: tags
     disableLocalAuth: true
