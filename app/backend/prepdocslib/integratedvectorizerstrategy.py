@@ -70,8 +70,8 @@ class IntegratedVectorizerStrategy(Strategy):
             description="Split skill to chunk documents",
             text_split_mode="pages",
             context="/document",
-            maximum_page_length=2048,
-            page_overlap_length=20,
+            maximum_page_length=1000,
+            page_overlap_length=10,
             inputs=[
                 InputFieldMappingEntry(name="text", source="/document/content"),
             ],
