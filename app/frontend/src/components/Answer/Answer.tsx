@@ -57,14 +57,18 @@ export const Answer = ({
                             ariaLabel="Show thought process"
                             onClick={() => onThoughtProcessClicked()}
                             disabled={!answer.context.thoughts?.length}
-                        />
+                        >
+                            <img src={ThoughtProcessIcon} alt="Open thought process" aria-hidden="true" width="24px" height="24px" />
+                        </IconButton>
                         <IconButton
                             style={{ color: "#11271A" }}
                             title="Show supporting content"
                             ariaLabel="Show supporting content"
                             onClick={() => onSupportingContentClicked()}
                             disabled={!answer.context.data_points}
-                        />
+                        >
+                            <img src={SupportingContentIcon} alt="Open supporting content" aria-hidden="true" width="24px" height="24px" />
+                        </IconButton>
                         {showSpeechOutputAzure && <SpeechOutputAzure url={speechUrl} />}
                         {showSpeechOutputBrowser && <SpeechOutputBrowser answer={sanitizedAnswerHtml} />}
                     </div>
