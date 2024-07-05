@@ -1,6 +1,5 @@
 import { useRef, useState, useEffect, useContext } from "react";
 import { Checkbox, Panel, DefaultButton, TextField, ITextFieldProps, ICheckboxProps } from "@fluentui/react";
-import { SparkleFilled } from "@fluentui/react-icons";
 import { useId } from "@fluentui/react-hooks";
 import readNDJSONStream from "ndjson-readablestream";
 
@@ -36,10 +35,10 @@ import { TokenClaimsDisplay } from "../../components/TokenClaimsDisplay";
 import { GPT4VSettings } from "../../components/GPT4VSettings";
 import { toolTipText } from "../../i18n/tooltips.js";
 import { useOutletContext } from "react-router-dom";
-import cfg from "../../../../backend/approaches/config/config_approaches.json";
 import { LoginContext } from "../../loginContext";
+import config from "../../../../backend/approaches/config/config_approaches.json";
 
-const Chat = (config: typeof cfg) => {
+const Chat = () => {
     const defaultPromptTemplate = [
         "Assistant helps the company employees with their questions. Be brief in your answers.",
         "Answer ONLY with the facts listed in the list of sources below. If there isn't enough information below, say you don't know.",

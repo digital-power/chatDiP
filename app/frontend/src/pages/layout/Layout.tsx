@@ -4,9 +4,9 @@ import github from "../../assets/github.svg";
 import styles from "./Layout.module.css";
 import { useLogin } from "../../authConfig";
 import { LoginButton } from "../../components/LoginButton";
-import cfg from "../../../../backend/approaches/config/config_approaches.json";
+import config from "../../../../backend/approaches/config/config_approaches.json";
 
-const Layout = (config: typeof cfg) => {
+const Layout = () => {
     const configArray = Object.values(config);
     const params = useParams();
     const usecase_id = params.usecase_id ?? "demo";
