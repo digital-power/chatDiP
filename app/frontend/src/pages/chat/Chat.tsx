@@ -1,6 +1,5 @@
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useContext } from "react";
 import { Checkbox, Panel, DefaultButton, TextField, ITextFieldProps, ICheckboxProps } from "@fluentui/react";
-import { SparkleFilled } from "@fluentui/react-icons";
 import { useId } from "@fluentui/react-hooks";
 import readNDJSONStream from "ndjson-readablestream";
 
@@ -29,16 +28,17 @@ import { AnalysisPanel, AnalysisPanelTabs } from "../../components/AnalysisPanel
 import { SettingsButton } from "../../components/SettingsButton";
 import { ClearChatButton } from "../../components/ClearChatButton";
 import { UploadFile } from "../../components/UploadFile";
-import { useLogin, getToken, isLoggedIn, requireAccessControl } from "../../authConfig";
+import { useLogin, getToken, requireAccessControl } from "../../authConfig";
 import { VectorSettings } from "../../components/VectorSettings";
 import { useMsal } from "@azure/msal-react";
 import { TokenClaimsDisplay } from "../../components/TokenClaimsDisplay";
 import { GPT4VSettings } from "../../components/GPT4VSettings";
 import { toolTipText } from "../../i18n/tooltips.js";
 import { useOutletContext } from "react-router-dom";
-import cfg from "../../../../backend/approaches/config/config_approaches.json";
+import { LoginContext } from "../../loginContext";
+import config from "../../../../backend/approaches/config/config_approaches.json";
 
-const Chat = (config: typeof cfg) => {
+const Chat = () => {
     const defaultPromptTemplate = [
         "Assistant helps the company employees with their questions. Be brief in your answers.",
         "Answer ONLY with the facts listed in the list of sources below. If there isn't enough information below, say you don't know.",
@@ -161,6 +161,7 @@ const Chat = (config: typeof cfg) => {
     };
 
     const client = useLogin ? useMsal().instance : undefined;
+    const { loggedIn } = useContext(LoginContext);
 
     const makeApiRequest = async (question: string) => {
         lastQuestionRef.current = question;
@@ -358,7 +359,7 @@ const Chat = (config: typeof cfg) => {
         <div className={styles.container}>
             <div className={styles.commandsContainer}>
                 <ClearChatButton className={styles.commandButton} onClick={clearChat} disabled={!lastQuestionRef.current || isLoading} />
-                {showUserUpload && <UploadFile className={styles.commandButton} disabled={!isLoggedIn(client)} />}
+                {showUserUpload && <UploadFile className={styles.commandButton} disabled={!loggedIn} />}
                 <SettingsButton className={styles.commandButton} onClick={() => setIsConfigPanelOpen(!isConfigPanelOpen)} />
             </div>
             <div className={styles.chatRoot}>
@@ -662,7 +663,7 @@ const Chat = (config: typeof cfg) => {
                                 className={styles.chatSettingsSeparator}
                                 checked={useOidSecurityFilter || requireAccessControl}
                                 label="Use oid security filter"
-                                disabled={!isLoggedIn(client) || requireAccessControl}
+                                disabled={!loggedIn || requireAccessControl}
                                 onChange={onUseOidSecurityFilterChange}
                                 aria-labelledby={useOidSecurityFilterId}
                                 onRenderLabel={(props: ICheckboxProps | undefined) => (
@@ -679,7 +680,7 @@ const Chat = (config: typeof cfg) => {
                                 className={styles.chatSettingsSeparator}
                                 checked={useGroupsSecurityFilter || requireAccessControl}
                                 label="Use groups security filter"
-                                disabled={!isLoggedIn(client) || requireAccessControl}
+                                disabled={!loggedIn || requireAccessControl}
                                 onChange={onUseGroupsSecurityFilterChange}
                                 aria-labelledby={useGroupsSecurityFilterId}
                                 onRenderLabel={(props: ICheckboxProps | undefined) => (
