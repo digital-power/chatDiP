@@ -21,6 +21,10 @@ param runtimeVersion string
 // Microsoft.Web/sites Properties
 param kind string = 'app,linux'
 
+// Microsoft.Web/sites/hostNameBindings Properties
+param customDomain string = 'aide.digital-power.com'
+param sslThumbprintVaultKey string = 'ssl-thumbprint'
+
 // Microsoft.Web/sites/config
 param allowedOrigins array = []
 param additionalScopes array = []
@@ -94,6 +98,15 @@ resource appService 'Microsoft.Web/sites@2022-03-01' = {
   kind: kind
   properties: appServiceProperties
   identity: { type: managedIdentity ? 'SystemAssigned' : 'None' }
+
+  resource hostNameBinding 'hostNameBindings' = {
+    name: customDomain
+    properties: {
+      siteName: appService.name
+      sslState: 'SniEnabled'
+      thumbprint: sslThumbprint.properties.value
+    }
+  }
 
   resource configAppSettings 'config' = {
     name: 'appsettings'
@@ -172,6 +185,11 @@ resource appService 'Microsoft.Web/sites@2022-03-01' = {
 
 resource keyVault 'Microsoft.KeyVault/vaults@2022-07-01' existing = if (!(empty(keyVaultName))) {
   name: keyVaultName
+}
+
+resource sslThumbprint 'Microsoft.KeyVault/vaults/secrets@2023-07-01' existing = if (!empty(sslThumbprintVaultKey)) {
+  parent: keyVault
+  name: sslThumbprintVaultKey
 }
 
 resource applicationInsights 'Microsoft.Insights/components@2020-02-02' existing = if (!empty(applicationInsightsName)) {
