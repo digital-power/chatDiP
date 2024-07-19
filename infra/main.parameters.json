@@ -113,6 +113,9 @@
     "chatGptDeploymentCapacity":{
       "value": "${AZURE_OPENAI_CHATGPT_DEPLOYMENT_CAPACITY}"
     },
+    "customDomain" : {
+      "value": "${AZURE_WEB_APP_CUSTOM_DOMAIN}"
+    },
     "embeddingModelName":{
       "value": "${AZURE_OPENAI_EMB_MODEL_NAME}"
     },

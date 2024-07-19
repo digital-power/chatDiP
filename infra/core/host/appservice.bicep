@@ -22,8 +22,7 @@ param runtimeVersion string
 param kind string = 'app,linux'
 
 // Microsoft.Web/sites/hostNameBindings Properties
-param customDomain string = 'aide.digital-power.com'
-param sslThumbprintVaultKey string = 'ssl-thumbprint'
+param customDomain string = ''
 
 // Microsoft.Web/sites/config
 param allowedOrigins array = []
@@ -99,12 +98,14 @@ resource appService 'Microsoft.Web/sites@2022-03-01' = {
   properties: appServiceProperties
   identity: { type: managedIdentity ? 'SystemAssigned' : 'None' }
 
-  resource hostNameBinding 'hostNameBindings' = {
+  resource hostNameBinding 'hostNameBindings' = if (!(empty(customDomain))) {
     name: customDomain
     properties: {
       siteName: appService.name
+      hostNameType: 'Managed'
       sslState: 'SniEnabled'
-      thumbprint: sslThumbprint.properties.value
+      thumbprint: certificates.properties.thumbprint
+      customHostNameDnsRecordType: 'CName'
     }
   }
 
@@ -183,13 +184,18 @@ resource appService 'Microsoft.Web/sites@2022-03-01' = {
   }
 }
 
-resource keyVault 'Microsoft.KeyVault/vaults@2022-07-01' existing = if (!(empty(keyVaultName))) {
-  name: keyVaultName
+// Create certificates for hostname
+resource certificates 'Microsoft.Web/certificates@2022-03-01' = if (!(empty(customDomain))) {
+  name: customDomain
+  location: location
+  properties: {
+    canonicalName: customDomain
+    serverFarmId: appServicePlanId
+  }
 }
 
-resource sslThumbprint 'Microsoft.KeyVault/vaults/secrets@2023-07-01' existing = if (!empty(sslThumbprintVaultKey)) {
-  parent: keyVault
-  name: sslThumbprintVaultKey
+resource keyVault 'Microsoft.KeyVault/vaults@2022-07-01' existing = if (!(empty(keyVaultName))) {
+  name: keyVaultName
 }
 
 resource applicationInsights 'Microsoft.Insights/components@2020-02-02' existing = if (!empty(applicationInsightsName)) {

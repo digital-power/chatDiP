@@ -45,6 +45,27 @@ To run the app locally:
 #### Running the app
 Instructions on running the local environment can be found [here](docs/localdev.md).
 
+### Map custom domain
+To map a custom domain to the app, the following steps need to be taken:
+
+1. Make sure your domain is registered by your hosting provider.
+2. Share the CNAME records with the hosting provider.
+    - Go to the Azure portal and navigate to the web app.
+    - Go to the custom domains tab and add the custom domain.
+    - Export the CNAME records and share them with the hosting provider.
+3. Deploy the Bicep code in the correct order.
+    - Go to `infra/core/host/appservice.bicep`
+    - Add `depends_on` block to the `certificates` resource with `appService` as the dependency.
+    - Outcomment the `thumbprint` property in the `appService/hostNameBinding` resource.
+    - Set `sslState` to *Disabled*
+    - Remove the `depends_on` block from the `certificates` resource.
+    - Run `azd provision` to create the certificate and set the custom domain.
+    - After deployment, uncomment the `thumbprint` property
+    - Set `sslState` to *SniEnabled*.
+    - Run `azd provision` to set the host binding to use the certificate.
+
+
 ### Owners of this project
 - Myrthe Lammerse [myrthe.lammerse@digital-power.com](mailto:myrthe.lammerse@digital-power.com)
 - Roy Klip [roy.klip@digital-power.com](mailto:myrthe.lammerse@digital-power.com)
+- Casper Damen [casper.damen@digital-power.com](mailto:casper.damen@digital-power.com)
