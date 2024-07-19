@@ -184,7 +184,6 @@ resource appService 'Microsoft.Web/sites@2022-03-01' = {
   }
 }
 
-// Create certificates for hostname
 resource certificates 'Microsoft.Web/certificates@2022-03-01' = if (!(empty(customDomain))) {
   name: customDomain
   location: location
