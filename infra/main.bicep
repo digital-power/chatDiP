@@ -45,6 +45,7 @@ param userStorageAccountName string = ''
 param userStorageContainerName string = 'user-content'
 
 param appServiceSkuName string // Set in main.parameters.json
+param customDomain string = '' // Set in main.parameters.json
 
 @allowed([ 'azure', 'openai', 'azure_custom' ])
 param openAiHost string // Set in main.parameters.json
@@ -289,6 +290,7 @@ module backend 'core/host/appservice.bicep' = {
     location: location
     tags: union(tags, { 'azd-service-name': 'backend' })
     appServicePlanId: appServicePlan.outputs.id
+    customDomain: customDomain
     runtimeName: 'python'
     runtimeVersion: '3.11'
     appCommandLine: 'python3 -m gunicorn main:app'

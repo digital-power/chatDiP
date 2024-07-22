@@ -15,7 +15,7 @@ If you're not sure, try it out on an old environment.
 
 ## Does this require changes to learn.microsoft.com docs?
 
-This repository is referenced by [this tutorial](https://learn.microsoft.com/azure/developer/python/get-started-app-chat-template)
+This repository is referenced by [this tutorial](https://learn.microsoft.com/azure/developer/python/get-started-app-chat-template?tabs=github-codespaces)
 which includes deployment, settings and usage instructions. If text or screenshot need to change in the tutorial,
 check the box below and notify the tutorial author. A Microsoft employee can do this for you if you're an external contributor.
 

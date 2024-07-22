@@ -21,6 +21,9 @@ param runtimeVersion string
 // Microsoft.Web/sites Properties
 param kind string = 'app,linux'
 
+// Microsoft.Web/sites/hostNameBindings Properties
+param customDomain string = ''
+
 // Microsoft.Web/sites/config
 param allowedOrigins array = []
 param additionalScopes array = []
@@ -95,6 +98,17 @@ resource appService 'Microsoft.Web/sites@2022-03-01' = {
   properties: appServiceProperties
   identity: { type: managedIdentity ? 'SystemAssigned' : 'None' }
 
+  resource hostNameBinding 'hostNameBindings' = if (!(empty(customDomain))) {
+    name: customDomain
+    properties: {
+      siteName: appService.name
+      hostNameType: 'Managed'
+      sslState: 'SniEnabled'
+      thumbprint: certificates.properties.thumbprint
+      customHostNameDnsRecordType: 'CName'
+    }
+  }
+
   resource configAppSettings 'config' = {
     name: 'appsettings'
     properties: union(appSettings,
@@ -167,6 +181,15 @@ resource appService 'Microsoft.Web/sites@2022-03-01' = {
         }
       }
     }
+  }
+}
+
+resource certificates 'Microsoft.Web/certificates@2022-03-01' = if (!(empty(customDomain))) {
+  name: customDomain
+  location: location
+  properties: {
+    canonicalName: customDomain
+    serverFarmId: appServicePlanId
   }
 }
 
