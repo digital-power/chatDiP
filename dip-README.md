@@ -36,7 +36,7 @@ Ask one of the [owners](/dip-README.md#owners-of-this-project) to add you to the
 
 #### Setting up the environment
 To run the app locally:
-1. Install the [Azure Developer CLI](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd)
+1. Install the [Azure Developer CLI](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd)
 1. Run `azd auth login`
 1. Run `azd env refresh -e chat-dip-dev`
     - When prompted, choose the **Digital Power Playground** subscription
@@ -58,8 +58,8 @@ To map a custom domain to the app, the following steps need to be taken:
     - Add `depends_on` block to the `certificates` resource with `appService` as the dependency.
     - Outcomment the `thumbprint` property in the `appService/hostNameBinding` resource.
     - Set `sslState` to *Disabled*
-    - Remove the `depends_on` block from the `certificates` resource.
     - Run `azd provision` to create the certificate and set the custom domain.
+    - Remove the `depends_on` block from the `certificates` resource.
     - After deployment, uncomment the `thumbprint` property
     - Set `sslState` to *SniEnabled*.
     - Run `azd provision` to set the host binding to use the certificate.
