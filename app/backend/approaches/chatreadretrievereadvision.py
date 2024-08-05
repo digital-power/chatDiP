@@ -93,7 +93,7 @@ class ChatReadRetrieveReadVisionApproach(ChatApproach):
         dict[str, Any],
         Coroutine[Any, Any, Union[ChatCompletion, AsyncStream[ChatCompletionChunk]]],
     ]:
-        usecase = overrides.get("usecase", "hrdocs")
+        usecase = overrides.get("usecase", "hr")
         assert usecase_exists(usecase), f"Usecase {usecase} not found"
 
         use_text_search = overrides.get("retrieval_mode") in ["text", "hybrid", None]

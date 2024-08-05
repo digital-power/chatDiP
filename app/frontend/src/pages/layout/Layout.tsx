@@ -9,7 +9,7 @@ const Layout = () => {
     const configArray = Object.values(config);
     const params = useParams();
     const location = useLocation();
-    const usecase_id = params.usecase_id ?? "hrdocs";
+    const usecase_id = params.usecase_id ?? "hr";
     const currentUsecase = configArray.find(usecase => usecase_id == usecase.id);
     const [isConfigPanelOpen, setIsConfigPanelOpen] = useState(false);
 
