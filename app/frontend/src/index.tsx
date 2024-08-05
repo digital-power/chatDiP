@@ -1,6 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { createHashRouter, RouterProvider } from "react-router-dom";
+import { createHashRouter, RouterProvider, Navigate } from "react-router-dom";
 import { initializeIcons } from "@fluentui/react";
 
 import "./index.css";
@@ -18,7 +18,7 @@ const router = createHashRouter([
         children: [
             {
                 index: true,
-                element: <Chat />
+                element: <Navigate to="usecase/hr" replace />
             },
             {
                 path: "usecase/:usecase_id",

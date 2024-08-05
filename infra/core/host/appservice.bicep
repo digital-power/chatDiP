@@ -99,12 +99,12 @@ resource appService 'Microsoft.Web/sites@2022-03-01' = {
   identity: { type: managedIdentity ? 'SystemAssigned' : 'None' }
 
   resource hostNameBinding 'hostNameBindings' = if (!(empty(customDomain))) {
-    name: customDomain
+    name: (!(empty(customDomain))) ? customDomain : 'null'
     properties: {
       siteName: appService.name
       hostNameType: 'Managed'
       sslState: 'SniEnabled'
-      thumbprint: certificates.properties.thumbprint
+      thumbprint: (!(empty(customDomain))) ? certificates.properties.thumbprint : null
       customHostNameDnsRecordType: 'CName'
     }
   }
@@ -185,7 +185,7 @@ resource appService 'Microsoft.Web/sites@2022-03-01' = {
 }
 
 resource certificates 'Microsoft.Web/certificates@2022-03-01' = if (!(empty(customDomain))) {
-  name: customDomain
+  name: (!(empty(customDomain))) ? customDomain : 'null'
   location: location
   properties: {
     canonicalName: customDomain

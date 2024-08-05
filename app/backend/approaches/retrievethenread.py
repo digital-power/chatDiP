@@ -80,7 +80,7 @@ info4.pdf: In-network institutions include Overlake, Swedish and others in the r
         if not isinstance(q, str):
             raise ValueError("The most recent message content must be a string.")
         overrides = context.get("overrides", {})
-        usecase = overrides.get("usecase", "demo")
+        usecase = overrides.get("usecase", "hrdocs")
         assert usecase_exists(usecase), f"Usecase {usecase} not found"
 
         auth_claims = context.get("auth_claims", {})
