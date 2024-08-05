@@ -81,7 +81,7 @@ class RetrieveThenReadVisionApproach(Approach):
             raise ValueError("The most recent message content must be a string.")
 
         overrides = context.get("overrides", {})
-        usecase = overrides.get("usecase", "demo")
+        usecase = overrides.get("usecase", "hr")
         assert usecase_exists(usecase), f"Usecase {usecase} not found"
 
         auth_claims = context.get("auth_claims", {})

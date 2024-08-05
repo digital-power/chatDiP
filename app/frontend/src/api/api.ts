@@ -83,7 +83,7 @@ export function getCitationFilePath(citation: string): string {
         const usecase = hashParts[usecaseIndex + 1];
         return `${BACKEND_URI}/content/usecase/${usecase}/${citation}`;
     } else {
-        return `${BACKEND_URI}/content/usecase/demo/${citation}`;
+        return `${BACKEND_URI}/content/usecase/hr/${citation}`;
     }
 }
 
