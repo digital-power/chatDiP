@@ -319,7 +319,7 @@ async def test_chat_text_filter(auth_client, snapshot):
     )
     assert response.status_code == 200
     assert (
-        auth_client.config[app.CONFIG_SEARCH_CLIENTS]["demo"].filter
+        auth_client.config[app.CONFIG_SEARCH_CLIENTS]["hr"].filter
         == "category ne 'excluded' and (oids/any(g:search.in(g, 'OID_X')) or groups/any(g:search.in(g, 'GROUP_Y, GROUP_Z')))"
     )
     result = await response.get_json()
@@ -345,7 +345,7 @@ async def test_chat_text_filter_public_documents(auth_public_documents_client, s
     )
     assert response.status_code == 200
     assert (
-        auth_public_documents_client.config[app.CONFIG_SEARCH_CLIENTS]["demo"].filter
+        auth_public_documents_client.config[app.CONFIG_SEARCH_CLIENTS]["hr"].filter
         == "category ne 'excluded' and ((oids/any(g:search.in(g, 'OID_X')) or groups/any(g:search.in(g, 'GROUP_Y, GROUP_Z'))) or (not oids/any() and not groups/any()))"
     )
     result = await response.get_json()
@@ -579,7 +579,7 @@ async def test_chat_stream_text_filter(auth_client, snapshot):
 
     assert response.status_code == 200
     assert (
-        auth_client.config[app.CONFIG_SEARCH_CLIENTS]["demo"].filter
+        auth_client.config[app.CONFIG_SEARCH_CLIENTS]["hr"].filter
         == "category ne 'excluded' and (oids/any(g:search.in(g, 'OID_X')) or groups/any(g:search.in(g, 'GROUP_Y, GROUP_Z')))"
     )
     result = await response.get_data()
