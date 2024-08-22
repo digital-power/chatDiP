@@ -1,4 +1,4 @@
-# ChatDIP
+# AIDE
 Welcome to the Digital Power AI chatbot solution based on this [Azure sample repository](https://github.com/Azure-Samples/azure-search-openai-demo).
 
 Since the authors of the Azure sample project have already documented almost all you need to know, this README is meant to quickly navigate to the relevant parts.
@@ -32,13 +32,13 @@ If you are an [owners](/dip-README.md#owners-of-this-project) of this project yo
 If you want to make changes to the app, you need to test them locally. Therefore, you need to be able to run the app locally which requires the right access and setting up the environment.
 
 #### Getting access
-Ask one of the [owners](/dip-README.md#owners-of-this-project) to add you to the [chatdip user group](https://portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Overview/groupId/d00eb3be-cd9c-4a27-be65-5b4fb6918231) and assign you the `Reader` role on the [Digital Power Playground](https://portal.azure.com/#@digital-power.com/resource/subscriptions/ef0661c5-0e9a-4467-ba85-e57a8816570d) subscription.
+Ask one of the [owners](/dip-README.md#owners-of-this-project) to add you to the [aide user group](https://portal.azure.com/#view/Microsoft_AAD_IAM/GroupDetailsMenuBlade/~/Overview/groupId/d00eb3be-cd9c-4a27-be65-5b4fb6918231) and assign you the `Reader` role on the [Digital Power Playground](https://portal.azure.com/#@digital-power.com/resource/subscriptions/ef0661c5-0e9a-4467-ba85-e57a8816570d) subscription.
 
 #### Setting up the environment
 To run the app locally:
 1. Install the [Azure Developer CLI](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd)
 1. Run `azd auth login`
-1. Run `azd env refresh -e chat-dip-dev`
+1. Run `azd env refresh -e aide-dev`
     - When prompted, choose the **Digital Power Playground** subscription
     - When prompted, choose **West-Europe** as the region, if it is not an option (for `openAiResourceGroupLocation`) choose **France Central**
 

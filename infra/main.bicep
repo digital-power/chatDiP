@@ -10,7 +10,7 @@ param environmentName string
 param location string
 
 param resourceGroupCreatedBy string = 'Myrthe Lammerse'
-param resourceGroupProject string = 'ChatDIP'
+param resourceGroupProject string = 'AIDE'
 param resourceGroupProjectCode string = 'ZO'
 param resourceGroupPurpose string = 'Internal Project'
 param resourceGroupEndDate string = '31-12-2024'
@@ -45,7 +45,7 @@ param userStorageAccountName string = ''
 param userStorageContainerName string = 'user-content'
 
 param appServiceSkuName string // Set in main.parameters.json
-param customDomain string = '' // Set in main.parameters.json
+// param customDomain string = '' // Set in main.parameters.json
 
 @allowed([ 'azure', 'openai', 'azure_custom' ])
 param openAiHost string // Set in main.parameters.json
@@ -290,7 +290,7 @@ module backend 'core/host/appservice.bicep' = {
     location: location
     tags: union(tags, { 'azd-service-name': 'backend' })
     appServicePlanId: appServicePlan.outputs.id
-    customDomain: customDomain
+//     customDomain: customDomain
     runtimeName: 'python'
     runtimeVersion: '3.11'
     appCommandLine: 'python3 -m gunicorn main:app'
@@ -474,7 +474,7 @@ module searchService 'core/search/search-services.bicep' = {
   name: 'search-service'
   scope: searchServiceResourceGroup
   params: {
-    name: !empty(searchServiceName) ? searchServiceName : 'search-service-aide-basic'
+    name: !empty(searchServiceName) ? searchServiceName : 'search-service-aide-dev-basic'
     location: !empty(searchServiceLocation) ? searchServiceLocation : location
     tags: tags
     disableLocalAuth: true
