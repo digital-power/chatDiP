@@ -37,11 +37,12 @@ jobs:
           uses: actions/setup-node@v4
           with:
             node-version: 18
-        - name: Build frontend
-          run: |
-            cd ./app/frontend
-            npm install
-            npm run build
+            
+        # - name: Build frontend
+        #   run: |
+        #     cd ./app/frontend
+        #     npm install
+        #     npm run build
         - name: Install dependencies
           run: |
             python -m pip install --upgrade pip

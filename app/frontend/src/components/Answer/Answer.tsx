@@ -1,6 +1,9 @@
 import { useMemo } from "react";
 import { Stack, IconButton } from "@fluentui/react";
 import DOMPurify from "dompurify";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import rehypeRaw from "rehype-raw";
 
 import ThoughtProcessIcon from "../../assets/thought_process.svg";
 import SupportingContentIcon from "../../assets/supporting_content.svg";
@@ -29,8 +32,6 @@ interface Props {
 
 export const Answer = ({
     answer,
-    index,
-    speechConfig,
     isSelected,
     isStreaming,
     onCitationClicked,
