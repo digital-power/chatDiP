@@ -103,6 +103,7 @@ class ChatReadRetrieveReadApproach(ChatApproach):
             "hybrid",
             None,
         ]
+        seed = overrides.get("seed", None)
         use_semantic_ranker = True if overrides.get(
             "semantic_ranker") else False
         use_semantic_captions = True if overrides.get(

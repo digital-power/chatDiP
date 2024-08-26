@@ -119,7 +119,7 @@ info4.pdf: In-network institutions include Overlake, Swedish and others in the r
             minimum_search_score,
             minimum_reranker_score,
         )
-
+        seed = overrides.get("seed", None)
         # Process results
         sources_content = self.get_sources_content(
             results, use_semantic_captions, use_image_citation=False)

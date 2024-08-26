@@ -113,6 +113,7 @@ class ChatReadRetrieveReadVisionApproach(ChatApproach):
         minimum_reranker_score = overrides.get("minimum_reranker_score", 0.0)
         filter = self.build_filter(overrides, auth_claims)
 
+        seed = overrides.get("seed", None)
         vector_fields = overrides.get("vector_fields", ["embedding"])
         send_text_to_gptvision = overrides.get("gpt4v_input") in [
             "textAndImages",
