@@ -37,7 +37,8 @@ class ChatReadRetrieveReadVisionApproach(ChatApproach):
         chatgpt_deployment: Optional[str],  # Not needed for non-Azure OpenAI
         gpt4v_deployment: Optional[str],  # Not needed for non-Azure OpenAI
         gpt4v_model: str,
-        embedding_deployment: Optional[str],  # Not needed for non-Azure OpenAI or for retrieval_mode="text"
+        # Not needed for non-Azure OpenAI or for retrieval_mode="text"
+        embedding_deployment: Optional[str],
         embedding_model: str,
         embedding_dimensions: int,
         sourcepage_field: str,
@@ -76,7 +77,6 @@ class ChatReadRetrieveReadVisionApproach(ChatApproach):
         Answer the following question using only the data provided in the sources below.
         If asking a clarifying question to the user would help, ask the question.
         Be brief in your answers.
-        For tabular information return it as an html table. Do not return markdown format.
         The text and image source can be the same file name, don't use the image title when citing the image source, only use the file name as mentioned
         If you cannot answer using the sources below, say you don't know. Return just the answer without any input texts.
         {follow_up_questions_prompt}
@@ -91,19 +91,23 @@ class ChatReadRetrieveReadVisionApproach(ChatApproach):
         should_stream: bool = False,
     ) -> tuple[
         dict[str, Any],
-        Coroutine[Any, Any, Union[ChatCompletion, AsyncStream[ChatCompletionChunk]]],
+        Coroutine[Any, Any, Union[ChatCompletion,
+                                  AsyncStream[ChatCompletionChunk]]],
     ]:
         usecase = overrides.get("usecase", "hr")
         assert usecase_exists(usecase), f"Usecase {usecase} not found"
 
-        use_text_search = overrides.get("retrieval_mode") in ["text", "hybrid", None]
+        use_text_search = overrides.get("retrieval_mode") in [
+            "text", "hybrid", None]
         use_vector_search = overrides.get("retrieval_mode") in [
             "vectors",
             "hybrid",
             None,
         ]
-        use_semantic_ranker = True if overrides.get("semantic_ranker") else False
-        use_semantic_captions = True if overrides.get("semantic_captions") else False
+        use_semantic_ranker = True if overrides.get(
+            "semantic_ranker") else False
+        use_semantic_captions = True if overrides.get(
+            "semantic_captions") else False
         top = overrides.get("top", 3)
         minimum_search_score = overrides.get("minimum_search_score", 0.0)
         minimum_reranker_score = overrides.get("minimum_reranker_score", 0.0)
@@ -123,7 +127,8 @@ class ChatReadRetrieveReadVisionApproach(ChatApproach):
 
         original_user_query = messages[-1]["content"]
         if not isinstance(original_user_query, str):
-            raise ValueError("The most recent message content must be a string.")
+            raise ValueError(
+                "The most recent message content must be a string.")
         past_messages: list[ChatCompletionMessageParam] = messages[:-1]
 
         # STEP 1: Generate an optimized keyword search query based on the chat history and the last question
@@ -147,9 +152,11 @@ class ChatReadRetrieveReadVisionApproach(ChatApproach):
             temperature=0.0,  # Minimize creativity for search query generation
             max_tokens=query_response_token_limit,
             n=1,
+            seed=seed,
         )
 
-        query_text = self.get_search_query(chat_completion, original_user_query)
+        query_text = self.get_search_query(
+            chat_completion, original_user_query)
 
         # STEP 2: Retrieve relevant documents from the search index with the GPT optimized query
 
@@ -177,7 +184,8 @@ class ChatReadRetrieveReadVisionApproach(ChatApproach):
             minimum_search_score,
             minimum_reranker_score,
         )
-        sources_content = self.get_sources_content(results, use_semantic_captions, use_image_citation=True)
+        sources_content = self.get_sources_content(
+            results, use_semantic_captions, use_image_citation=True)
         content = "\n".join(sources_content)
 
         # STEP 3: Generate a contextual and content specific answer using the search results and chat history
@@ -185,14 +193,17 @@ class ChatReadRetrieveReadVisionApproach(ChatApproach):
         # Allow client to replace the entire prompt, or to inject into the existing prompt using >>>
         system_message = self.get_system_prompt(
             overrides.get("prompt_template"),
-            self.follow_up_questions_prompt_content if overrides.get("suggest_followup_questions") else "",
+            self.follow_up_questions_prompt_content if overrides.get(
+                "suggest_followup_questions") else "",
         )
 
-        user_content: list[ChatCompletionContentPartParam] = [{"text": original_user_query, "type": "text"}]
+        user_content: list[ChatCompletionContentPartParam] = [
+            {"text": original_user_query, "type": "text"}]
         image_list: list[ChatCompletionContentPartImageParam] = []
 
         if send_text_to_gptvision:
-            user_content.append({"text": "\n\nSources:\n" + content, "type": "text"})
+            user_content.append(
+                {"text": "\n\nSources:\n" + content, "type": "text"})
         if send_images_to_gptvision:
             for result in results:
                 url = await fetch_image(self.blob_container_clients[usecase], result)
@@ -246,7 +257,8 @@ class ChatReadRetrieveReadVisionApproach(ChatApproach):
                     "Prompt to generate answer",
                     [str(message) for message in messages],
                     (
-                        {"model": self.gpt4v_model, "deployment": self.gpt4v_deployment}
+                        {"model": self.gpt4v_model,
+                            "deployment": self.gpt4v_deployment}
                         if self.gpt4v_deployment
                         else {"model": self.gpt4v_model}
                     ),
@@ -261,5 +273,6 @@ class ChatReadRetrieveReadVisionApproach(ChatApproach):
             max_tokens=response_token_limit,
             n=1,
             stream=should_stream,
+            seed=seed,
         )
         return (extra_info, chat_coroutine)

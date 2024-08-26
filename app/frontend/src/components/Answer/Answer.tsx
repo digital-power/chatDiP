@@ -6,7 +6,7 @@ import ThoughtProcessIcon from "../../assets/thought_process.svg";
 import SupportingContentIcon from "../../assets/supporting_content.svg";
 
 import styles from "./Answer.module.css";
-import { ChatAppResponse, getCitationFilePath } from "../../api";
+import { ChatAppResponse, getCitationFilePath, SpeechConfig } from "../../api";
 import { parseAnswerToHtml } from "./AnswerParser";
 import { AnswerIcon } from "./AnswerIcon";
 import { SpeechOutputBrowser } from "./SpeechOutputBrowser";
@@ -14,6 +14,8 @@ import { SpeechOutputAzure } from "./SpeechOutputAzure";
 
 interface Props {
     answer: ChatAppResponse;
+    index: number;
+    speechConfig: SpeechConfig;
     isSelected?: boolean;
     isStreaming: boolean;
     onCitationClicked: (filePath: string) => void;
@@ -23,11 +25,12 @@ interface Props {
     showFollowupQuestions?: boolean;
     showSpeechOutputBrowser?: boolean;
     showSpeechOutputAzure?: boolean;
-    speechUrl: string | null;
 }
 
 export const Answer = ({
     answer,
+    index,
+    speechConfig,
     isSelected,
     isStreaming,
     onCitationClicked,
@@ -36,13 +39,11 @@ export const Answer = ({
     onFollowupQuestionClicked,
     showFollowupQuestions,
     showSpeechOutputAzure,
-    showSpeechOutputBrowser,
-    speechUrl
+    showSpeechOutputBrowser
 }: Props) => {
     const followupQuestions = answer.context?.followup_questions;
     const messageContent = answer.message.content;
     const parsedAnswer = useMemo(() => parseAnswerToHtml(messageContent, isStreaming, onCitationClicked), [answer]);
-
     const sanitizedAnswerHtml = DOMPurify.sanitize(parsedAnswer.answerHtml);
 
     return (
@@ -76,7 +77,9 @@ export const Answer = ({
             </Stack.Item>
 
             <Stack.Item grow>
-                <div className={styles.answerText} dangerouslySetInnerHTML={{ __html: sanitizedAnswerHtml }}></div>
+                <div className={styles.answerText}>
+                    <ReactMarkdown children={sanitizedAnswerHtml} rehypePlugins={[rehypeRaw]} remarkPlugins={[remarkGfm]} />
+                </div>
             </Stack.Item>
 
             {!!parsedAnswer.citations.length && (

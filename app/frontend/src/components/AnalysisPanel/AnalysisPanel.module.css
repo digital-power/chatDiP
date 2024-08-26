@@ -1,8 +1,8 @@
 .thoughtProcess {
     font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
     word-wrap: break-word;
-    padding-top: 12px;
-    padding-bottom: 12px;
+    padding-top: 0.75em;
+    padding-bottom: 0.75em;
 }
 
 .tList {
@@ -39,25 +39,25 @@
 .tStep {
     color: #044318;
     position: relative;
-    font-size: 14px;
-    margin-bottom: 8px;
+    font-size: 0.875em;
+    margin-bottom: 0.5em;
 }
 
 .tCodeBlock {
-    max-height: 300px;
+    max-height: 18.75em;
 }
 
 .tProp {
     background-color: #d7d7d7;
     color: #333232;
-    font-size: 12px;
-    padding: 3px 10px;
-    border-radius: 10px;
-    margin-bottom: 8px;
+    font-size: 0.75em;
+    padding: 0.1875em 0.625em;
+    border-radius: 0.625em;
+    margin-bottom: 0.5em;
 }
 
 .citationImg {
-    height: 450px;
+    height: 28.125rem;
     max-width: 100%;
     object-fit: contain;
 }

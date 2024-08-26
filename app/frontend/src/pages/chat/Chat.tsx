@@ -10,14 +10,14 @@ import styles from "./Chat.module.css";
 import {
     chatApi,
     configApi,
-    getSpeechApi,
     RetrievalMode,
     ChatAppResponse,
     ChatAppResponseOrError,
     ChatAppRequest,
     ResponseMessage,
     VectorFieldOptions,
-    GPT4VInput
+    GPT4VInput,
+    SpeechConfig
 } from "../../api";
 import { Answer, AnswerError, AnswerLoading } from "../../components/Answer";
 import { QuestionInput } from "../../components/QuestionInput";
@@ -53,6 +53,7 @@ const Chat = () => {
     const [isConfigPanelOpen, setIsConfigPanelOpen, currentUsecase] = useOutletContext<[boolean, (arg: boolean) => void, Usecase]>();
     const [promptTemplate, setPromptTemplate] = useState<string>(defaultPromptTemplate);
     const [temperature, setTemperature] = useState<number>(0.3);
+    const [seed, setSeed] = useState<number | null>(null);
     const [minimumRerankerScore, setMinimumRerankerScore] = useState<number>(0);
     const [minimumSearchScore, setMinimumSearchScore] = useState<number>(0);
     const [retrieveCount, setRetrieveCount] = useState<number>(3);
@@ -198,7 +199,8 @@ const Chat = () => {
                         use_groups_security_filter: useGroupsSecurityFilter,
                         vector_fields: vectorFieldList,
                         use_gpt4v: useGPT4V,
-                        gpt4v_input: gpt4vInput
+                        gpt4v_input: gpt4vInput,
+                        ...(seed !== null ? { seed: seed } : {})
                     }
                 },
                 // AI Chat Protocol: Client must pass on any session state received from the server
@@ -209,16 +211,20 @@ const Chat = () => {
             if (!response.body) {
                 throw Error("No response body");
             }
+            if (response.status > 299 || !response.ok) {
+                throw Error(`Request failed with status ${response.status}`);
+            }
             if (shouldStream) {
                 const parsedResponse: ChatAppResponse = await handleAsyncRequest(question, answers, response.body);
                 setAnswers([...answers, [question, parsedResponse]]);
             } else {
                 const parsedResponse: ChatAppResponseOrError = await response.json();
-                if (response.status > 299 || !response.ok) {
-                    throw Error(parsedResponse.error || "Unknown error");
+                if (parsedResponse.error) {
+                    throw Error(parsedResponse.error);
                 }
                 setAnswers([...answers, [question, parsedResponse as ChatAppResponse]]);
             }
+            setSpeechUrls([...speechUrls, null]);
         } catch (e) {
             setError(e);
         } finally {
@@ -232,6 +238,7 @@ const Chat = () => {
         setActiveCitation(undefined);
         setActiveAnalysisPanelTab(undefined);
         setAnswers([]);
+        setSpeechUrls([]);
         setStreamedAnswers([]);
         setIsLoading(false);
         setIsStreaming(false);
@@ -243,25 +250,16 @@ const Chat = () => {
         getConfig();
     }, []);
 
-    useEffect(() => {
-        if (answers && showSpeechOutputAzure) {
-            // For each answer that is missing a speech URL, fetch the speech URL
-            for (let i = 0; i < answers.length; i++) {
-                if (!speechUrls[i]) {
-                    getSpeechApi(answers[i][1].message.content).then(speechUrl => {
-                        setSpeechUrls([...speechUrls.slice(0, i), speechUrl, ...speechUrls.slice(i + 1)]);
-                    });
-                }
-            }
-        }
-    }, [answers]);
-
     const onPromptTemplateChange = (_ev?: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) => {
         setPromptTemplate(newValue || "");
     };
 
     const onTemperatureChange = (_ev?: React.SyntheticEvent<HTMLElement, Event>, newValue?: string) => {
         setTemperature(parseFloat(newValue || "0"));
+    };
+
+    const onSeedChange = (_ev?: React.SyntheticEvent<HTMLElement, Event>, newValue?: string) => {
+        setSeed(parseInt(newValue || ""));
     };
 
     const onMinimumSearchScoreChange = (_ev?: React.SyntheticEvent<HTMLElement, Event>, newValue?: string) => {
@@ -334,6 +332,8 @@ const Chat = () => {
     const promptTemplateFieldId = useId("promptTemplateField");
     const temperatureId = useId("temperature");
     const temperatureFieldId = useId("temperatureField");
+    const seedId = useId("seed");
+    const seedFieldId = useId("seedField");
     const searchScoreId = useId("searchScore");
     const searchScoreFieldId = useId("searchScoreField");
     const rerankerScoreId = useId("rerankerScore");
@@ -389,6 +389,8 @@ const Chat = () => {
                                                 isStreaming={true}
                                                 key={index}
                                                 answer={streamedAnswer[1]}
+                                                index={index}
+                                                speechConfig={speechConfig}
                                                 isSelected={false}
                                                 onCitationClicked={c => onShowCitation(c, index)}
                                                 onThoughtProcessClicked={() => onToggleTab(AnalysisPanelTabs.ThoughtProcessTab, index)}
@@ -397,7 +399,6 @@ const Chat = () => {
                                                 showFollowupQuestions={useSuggestFollowupQuestions && answers.length - 1 === index}
                                                 showSpeechOutputAzure={showSpeechOutputAzure}
                                                 showSpeechOutputBrowser={showSpeechOutputBrowser}
-                                                speechUrl={speechUrls[index]}
                                             />
                                         </div>
                                     </div>
@@ -411,6 +412,8 @@ const Chat = () => {
                                                 isStreaming={false}
                                                 key={index}
                                                 answer={answer[1]}
+                                                index={index}
+                                                speechConfig={speechConfig}
                                                 isSelected={selectedAnswer === index && activeAnalysisPanelTab !== undefined}
                                                 onCitationClicked={c => onShowCitation(c, index)}
                                                 onThoughtProcessClicked={() => onToggleTab(AnalysisPanelTabs.ThoughtProcessTab, index)}
@@ -419,7 +422,6 @@ const Chat = () => {
                                                 showFollowupQuestions={useSuggestFollowupQuestions && answers.length - 1 === index}
                                                 showSpeechOutputAzure={showSpeechOutputAzure}
                                                 showSpeechOutputBrowser={showSpeechOutputBrowser}
-                                                speechUrl={speechUrls[index]}
                                             />
                                         </div>
                                     </div>
@@ -507,6 +509,19 @@ const Chat = () => {
                         aria-labelledby={temperatureId}
                         onRenderLabel={(props: ITextFieldProps | undefined) => (
                             <HelpCallout labelId={temperatureId} fieldId={temperatureFieldId} helpText={toolTipText.temperature} label={props?.label} />
+                        )}
+                    />
+
+                    <TextField
+                        id={seedFieldId}
+                        className={styles.chatSettingsSeparator}
+                        label="Seed"
+                        type="text"
+                        defaultValue={seed?.toString() || ""}
+                        onChange={onSeedChange}
+                        aria-labelledby={seedId}
+                        onRenderLabel={(props: ITextFieldProps | undefined) => (
+                            <HelpCallout labelId={seedId} fieldId={seedFieldId} helpText={toolTipText.seed} label={props?.label} />
                         )}
                     />
 
