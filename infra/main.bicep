@@ -135,6 +135,9 @@ param authTenantId string = ''
 // Used for the optional login and document level access control system
 param useAuthentication bool = false
 param enforceAccessControl bool = false
+// Force using MSAL app authentication instead of built-in App Service authentication
+// https://learn.microsoft.com/azure/app-service/overview-authentication-authorization
+param disableAppServicesAuthentication bool = false
 param enableGlobalDocuments bool = false
 param enableUnauthenticatedAccess bool = false
 param serverAppId string = ''
@@ -157,17 +160,6 @@ param publicNetworkAccess string = 'Enabled'
 
 @description('Add a private endpoints for network connectivity')
 param usePrivateEndpoint bool = false
-
-@description('Provision a VM to use for private endpoint connectivity')
-param provisionVm bool = false
-param vmUserName string = ''
-@secure()
-param vmPassword string = ''
-param vmOsVersion string = ''
-param vmOsPublisher string = ''
-param vmOsOffer string = ''
-@description('Size of the virtual machine.')
-param vmSize string = 'Standard_DS1_v2'
 
 @description('Id of the user or app to assign application roles')
 param principalId string = ''
@@ -302,6 +294,7 @@ module backend 'core/host/appservice.bicep' = {
     clientAppId: clientAppId
     serverAppId: serverAppId
     enableUnauthenticatedAccess: enableUnauthenticatedAccess
+    disableAppServicesAuthentication: disableAppServicesAuthentication
     clientSecretSettingName: !empty(clientAppSecret) ? 'AZURE_CLIENT_APP_SECRET' : ''
     authenticationIssuerUri: authenticationIssuerUri
     use32BitWorkerProcess: appServiceSkuName == 'F1'
@@ -315,7 +308,7 @@ module backend 'core/host/appservice.bicep' = {
       AZURE_SEARCH_QUERY_LANGUAGE: searchQueryLanguage
       AZURE_SEARCH_QUERY_SPELLER: searchQuerySpeller
       APPLICATIONINSIGHTS_CONNECTION_STRING: useApplicationInsights ? monitoring.outputs.applicationInsightsConnectionString : ''
-      AZURE_SPEECH_SERVICE_ID: useSpeechOutputAzure ? speech.outputs.id : ''
+      AZURE_SPEECH_SERVICE_ID: useSpeechOutputAzure ? speech.outputs.resourceId : ''
       AZURE_SPEECH_SERVICE_LOCATION: useSpeechOutputAzure ? speech.outputs.location : ''
       USE_SPEECH_INPUT_BROWSER: useSpeechInputBrowser
       USE_SPEECH_OUTPUT_BROWSER: useSpeechOutputBrowser
@@ -332,7 +325,7 @@ module backend 'core/host/appservice.bicep' = {
       AZURE_OPENAI_EMB_DEPLOYMENT: embedding.deploymentName
       AZURE_OPENAI_GPT4V_DEPLOYMENT: useGPT4V ? gpt4vDeploymentName : ''
       AZURE_OPENAI_API_VERSION: azureOpenAiApiVersion
-      AZURE_OPENAI_API_KEY: azureOpenAiApiKey
+      AZURE_OPENAI_API_KEY_OVERRIDE: azureOpenAiApiKey
       AZURE_OPENAI_CUSTOM_URL: azureOpenAiCustomUrl
       // Used only with non-Azure OpenAI deployments
       OPENAI_API_KEY: openAiApiKey
@@ -340,7 +333,7 @@ module backend 'core/host/appservice.bicep' = {
       // Optional login and document level access control system
       AZURE_USE_AUTHENTICATION: useAuthentication
       AZURE_ENFORCE_ACCESS_CONTROL: enforceAccessControl
-      AZURE_ENABLE_GLOBAL_DOCUMENTS_ACCESS: enableGlobalDocuments
+      AZURE_ENABLE_GLOBAL_DOCUMENT_ACCESS: enableGlobalDocuments
       AZURE_ENABLE_UNAUTHENTICATED_ACCESS: enableUnauthenticatedAccess
       AZURE_SERVER_APP_ID: serverAppId
       AZURE_SERVER_APP_SECRET: serverAppSecret
@@ -405,18 +398,21 @@ var openAiDeployments = concat(defaultOpenAiDeployments, useGPT4V ? [
     }
   ] : [])
 
-module openAi 'core/ai/cognitiveservices.bicep' = if (isAzureOpenAiHost && deployAzureOpenAi) {
+module openAi 'br/public:avm/res/cognitive-services/account:0.5.4' = if (isAzureOpenAiHost && deployAzureOpenAi) {
   name: 'openai'
   scope: openAiResourceGroup
   params: {
     name: !empty(openAiServiceName) ? openAiServiceName : '${abbrs.cognitiveServicesAccounts}${resourceToken}'
     location: openAiResourceGroupLocation
     tags: tags
+    kind: 'OpenAI'
+    customSubDomainName: !empty(openAiServiceName) ? openAiServiceName : '${abbrs.cognitiveServicesAccounts}${resourceToken}'
     publicNetworkAccess: publicNetworkAccess
-    bypass: bypass
-    sku: {
-      name: openAiSkuName
+    networkAcls: {
+      defaultAction: 'Allow'
+      bypass: bypass
     }
+    sku: openAiSkuName
     deployments: openAiDeployments
     disableLocalAuth: true
   }
@@ -424,23 +420,25 @@ module openAi 'core/ai/cognitiveservices.bicep' = if (isAzureOpenAiHost && deplo
 
 // Formerly known as Form Recognizer
 // Does not support bypass
-module documentIntelligence 'core/ai/cognitiveservices.bicep' = {
+module documentIntelligence 'br/public:avm/res/cognitive-services/account:0.5.4' = {
   name: 'documentintelligence'
   scope: documentIntelligenceResourceGroup
   params: {
     name: !empty(documentIntelligenceServiceName) ? documentIntelligenceServiceName : '${abbrs.cognitiveServicesDocumentIntelligence}${resourceToken}'
     kind: 'FormRecognizer'
+    customSubDomainName: !empty(documentIntelligenceServiceName) ? documentIntelligenceServiceName : '${abbrs.cognitiveServicesDocumentIntelligence}${resourceToken}'
     publicNetworkAccess: publicNetworkAccess
+    networkAcls: {
+      defaultAction: 'Allow'
+    }
     location: documentIntelligenceResourceGroupLocation
     disableLocalAuth: true
     tags: tags
-    sku: {
-      name: documentIntelligenceSkuName
-    }
+    sku: documentIntelligenceSkuName
   }
 }
 
-module computerVision 'core/ai/cognitiveservices.bicep' = if (useGPT4V) {
+module computerVision 'br/public:avm/res/cognitive-services/account:0.5.4' = if (useGPT4V) {
   name: 'computerVision'
   scope: computerVisionResourceGroup
   params: {
@@ -448,26 +446,31 @@ module computerVision 'core/ai/cognitiveservices.bicep' = if (useGPT4V) {
       ? computerVisionServiceName
       : '${abbrs.cognitiveServicesComputerVision}${resourceToken}'
     kind: 'ComputerVision'
+    networkAcls: {
+      defaultAction: 'Allow'
+    }
+    customSubDomainName: !empty(computerVisionServiceName)
+      ? computerVisionServiceName
+      : '${abbrs.cognitiveServicesComputerVision}${resourceToken}'
     location: computerVisionResourceGroupLocation
     tags: tags
-    bypass: bypass
-    sku: {
-      name: computerVisionSkuName
-    }
+    sku: computerVisionSkuName
   }
 }
 
-module speech 'core/ai/cognitiveservices.bicep' = if (useSpeechOutputAzure) {
+module speech 'br/public:avm/res/cognitive-services/account:0.5.4' = if (useSpeechOutputAzure) {
   name: 'speech-service'
   scope: speechResourceGroup
   params: {
     name: !empty(speechServiceName) ? speechServiceName : '${abbrs.cognitiveServicesSpeech}${resourceToken}'
     kind: 'SpeechServices'
+    networkAcls: {
+      defaultAction: 'Allow'
+    }
+    customSubDomainName: !empty(speechServiceName) ? speechServiceName : '${abbrs.cognitiveServicesSpeech}${resourceToken}'
     location: !empty(speechServiceLocation) ? speechServiceLocation : location
     tags: tags
-    sku: {
-      name: speechServiceSkuName
-    }
+    sku: speechServiceSkuName
   }
 }
 module searchService 'core/search/search-services.bicep' = {
@@ -720,31 +723,30 @@ module isolation 'network-isolation.bicep' = {
   params: {
     location: location
     tags: tags
-    resourceToken: resourceToken
     vnetName: '${abbrs.virtualNetworks}${resourceToken}'
     appServicePlanName: appServicePlan.outputs.name
-    provisionVm: provisionVm
     usePrivateEndpoint: usePrivateEndpoint
   }
 }
 
 var environmentData = environment()
-var privateEndpointConnections = usePrivateEndpoint ? [
+
+var openAiPrivateEndpointConnection = (isAzureOpenAiHost && deployAzureOpenAi) ? [{
+  groupId: 'account'
+  dnsZoneName: 'privatelink.openai.azure.com'
+  resourceIds: concat(
+    [ openAi.outputs.resourceId ],
+    useGPT4V ? [ computerVision.outputs.resourceId ] : [],
+    !useLocalPdfParser ? [ documentIntelligence.outputs.resourceId ] : []
+  )
+}] : []
+var otherPrivateEndpointConnections = usePrivateEndpoint ? [
   {
     groupId: 'blob'
     dnsZoneName: 'privatelink.blob.${environmentData.suffixes.storage}'
     resourceIds: concat(
       [ storage.outputs.id ],
       useUserUpload ? [ userStorage.outputs.id ] : []
-    )
-  }
-  {
-    groupId: 'account'
-    dnsZoneName: 'privatelink.openai.azure.com'
-    resourceIds: concat(
-      [ openAi.outputs.id ],
-      useGPT4V ? [ computerVision.outputs.id ] : [],
-      !useLocalPdfParser ? [ documentIntelligence.outputs.id ] : []
     )
   }
   {
@@ -759,6 +761,9 @@ var privateEndpointConnections = usePrivateEndpoint ? [
   }
 ] : []
 
+
+var privateEndpointConnections = concat(otherPrivateEndpointConnections, openAiPrivateEndpointConnection)
+
 module privateEndpoints 'private-endpoints.bicep' = if (usePrivateEndpoint) {
   name: 'privateEndpoints'
   scope: resourceGroup
@@ -771,22 +776,6 @@ module privateEndpoints 'private-endpoints.bicep' = if (usePrivateEndpoint) {
     logAnalyticsWorkspaceId: useApplicationInsights ? monitoring.outputs.logAnalyticsWorkspaceId : ''
     vnetName: isolation.outputs.vnetName
     vnetPeSubnetName: isolation.outputs.backendSubnetId
-  }
-}
-
-module vm 'core/host/vm.bicep' = if (provisionVm && usePrivateEndpoint) {
-  name: 'vm'
-  scope: resourceGroup
-  params: {
-    name: '${abbrs.computeVirtualMachines}${resourceToken}'
-    location: location
-    adminUsername: vmUserName
-    adminPassword: vmPassword
-    nicId: isolation.outputs.nicId
-    osVersion: vmOsVersion
-    osPublisher: vmOsPublisher
-    osOffer: vmOsOffer
-    vmSize: vmSize
   }
 }
 
@@ -854,7 +843,7 @@ output AZURE_OPENAI_CHATGPT_DEPLOYMENT string = isAzureOpenAiHost ? chatGpt.depl
 output AZURE_OPENAI_EMB_DEPLOYMENT string = isAzureOpenAiHost ? embedding.deploymentName : ''
 output AZURE_OPENAI_GPT4V_DEPLOYMENT string = isAzureOpenAiHost ? gpt4vDeploymentName : ''
 
-output AZURE_SPEECH_SERVICE_ID string = useSpeechOutputAzure ? speech.outputs.id : ''
+output AZURE_SPEECH_SERVICE_ID string = useSpeechOutputAzure ? speech.outputs.resourceId : ''
 output AZURE_SPEECH_SERVICE_LOCATION string = useSpeechOutputAzure ? speech.outputs.location : ''
 
 output AZURE_VISION_ENDPOINT string = useGPT4V ? computerVision.outputs.endpoint : ''

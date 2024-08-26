@@ -72,22 +72,33 @@ def live_server_url(mock_env, mock_acs_search, free_port: int) -> Generator[str,
     proc.kill()
 
 
+@pytest.fixture(params=[(480, 800), (600, 1024), (768, 1024), (992, 1024), (1024, 768)])
+def sized_page(page: Page, request):
+    size = request.param
+    page.set_viewport_size({"width": size[0], "height": size[1]})
+    yield page
+
+
 def test_home(page: Page, live_server_url: str):
     page.goto(live_server_url)
     expect(page).to_have_title("AI Document Explorer")
 
 
-def test_chat(page: Page, live_server_url: str):
+def test_chat(sized_page: Page, live_server_url: str):
+    page = sized_page
+
     # Set up a mock route to the /chat endpoint with streaming results
     def handle(route: Route):
         # Assert that session_state is specified in the request (None for now)
         session_state = route.request.post_data_json["session_state"]
         assert session_state is None
         # Read the JSONL from our snapshot results and return as the response
-        f = open("tests/snapshots/test_app/test_chat_stream_text/client0/result.jsonlines")
+        f = open(
+            "tests/snapshots/test_app/test_chat_stream_text/client0/result.jsonlines")
         jsonl = f.read()
         f.close()
-        route.fulfill(body=jsonl, status=200, headers={"Transfer-encoding": "Chunked"})
+        route.fulfill(body=jsonl, status=200, headers={
+                      "Transfer-encoding": "Chunked"})
 
     page.route("*/**/chat/stream", handle)
 
@@ -100,7 +111,8 @@ def test_chat(page: Page, live_server_url: str):
 
     # Ask a question and wait for the message to appear
     page.get_by_placeholder("Type a new question").click()
-    page.get_by_placeholder("Type a new question").fill("Whats the dental plan?")
+    page.get_by_placeholder("Type a new question").fill(
+        "Whats the dental plan?")
 
     page.get_by_role("button", name="Submit question").click()
 
@@ -158,7 +170,8 @@ def test_chat_customization(page: Page, live_server_url: str):
     # Customize all the settings
     page.get_by_role("button", name="Developer settings").click()
     page.get_by_label("Override prompt template").click()
-    page.get_by_label("Override prompt template").fill("You are a cat and only talk about tuna.")
+    page.get_by_label("Override prompt template").fill(
+        "You are a cat and only talk about tuna.")
     page.get_by_label("Retrieve this many search results:").click()
     page.get_by_label("Retrieve this many search results:").fill("1")
     page.get_by_label("Exclude category").click()
@@ -172,7 +185,8 @@ def test_chat_customization(page: Page, live_server_url: str):
 
     # Ask a question and wait for the message to appear
     page.get_by_placeholder("Type a new question").click()
-    page.get_by_placeholder("Type a new question").fill("Whats the dental plan?")
+    page.get_by_placeholder("Type a new question").fill(
+        "Whats the dental plan?")
     page.get_by_role("button", name="Submit question").click()
 
     expect(page.get_by_text("Whats the dental plan?")).to_be_visible()
@@ -226,7 +240,8 @@ def test_chat_customization_gpt4v(page: Page, live_server_url: str):
 
     # Ask a question and wait for the message to appear
     page.get_by_placeholder("Type a new question").click()
-    page.get_by_placeholder("Type a new question").fill("Whats the dental plan?")
+    page.get_by_placeholder("Type a new question").fill(
+        "Whats the dental plan?")
     page.get_by_label("Submit question").click()
 
 
@@ -251,7 +266,8 @@ def test_chat_nonstreaming(page: Page, live_server_url: str):
 
     # Ask a question and wait for the message to appear
     page.get_by_placeholder("Type a new question").click()
-    page.get_by_placeholder("Type a new question").fill("Whats the dental plan?")
+    page.get_by_placeholder("Type a new question").fill(
+        "Whats the dental plan?")
     page.get_by_label("Submit question").click()
 
     expect(page.get_by_text("Whats the dental plan?")).to_be_visible()
@@ -265,10 +281,12 @@ def test_chat_followup_streaming(page: Page, live_server_url: str):
         overrides = route.request.post_data_json["context"]["overrides"]
         assert overrides["suggest_followup_questions"] is True
         # Read the JSONL from our snapshot results and return as the response
-        f = open("tests/snapshots/test_app/test_chat_stream_followup/client0/result.jsonlines")
+        f = open(
+            "tests/snapshots/test_app/test_chat_stream_followup/client0/result.jsonlines")
         jsonl = f.read()
         f.close()
-        route.fulfill(body=jsonl, status=200, headers={"Transfer-encoding": "Chunked"})
+        route.fulfill(body=jsonl, status=200, headers={
+                      "Transfer-encoding": "Chunked"})
 
     page.route("*/**/chat/stream", handle)
 
@@ -282,7 +300,8 @@ def test_chat_followup_streaming(page: Page, live_server_url: str):
 
     # Ask a question and wait for the message to appear
     page.get_by_placeholder("Type a new question").click()
-    page.get_by_placeholder("Type a new question").fill("Whats the dental plan?")
+    page.get_by_placeholder("Type a new question").fill(
+        "Whats the dental plan?")
     page.get_by_label("Submit question").click()
 
     expect(page.get_by_text("Whats the dental plan?")).to_be_visible()
@@ -318,7 +337,8 @@ def test_chat_followup_nonstreaming(page: Page, live_server_url: str):
 
     # Ask a question and wait for the message to appear
     page.get_by_placeholder("Type a new question").click()
-    page.get_by_placeholder("Type a new question").fill("Whats the dental plan?")
+    page.get_by_placeholder("Type a new question").fill(
+        "Whats the dental plan?")
     page.get_by_label("Submit question").click()
 
     expect(page.get_by_text("Whats the dental plan?")).to_be_visible()

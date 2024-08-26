@@ -2,6 +2,10 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { createHashRouter, RouterProvider, Navigate } from "react-router-dom";
 import { initializeIcons } from "@fluentui/react";
+import { MsalProvider } from "@azure/msal-react";
+import { PublicClientApplication, EventType, AccountInfo } from "@azure/msal-browser";
+import { msalConfig, useLogin } from "./authConfig";
+import { useState } from "react";
 
 import "./index.css";
 
