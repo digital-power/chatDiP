@@ -10,7 +10,7 @@ param environmentName string
 param location string
 
 param resourceGroupCreatedBy string = 'Myrthe Lammerse'
-param resourceGroupProject string = 'ChatDIP'
+param resourceGroupProject string = 'AIDE'
 param resourceGroupProjectCode string = 'ZO'
 param resourceGroupPurpose string = 'Internal Project'
 param resourceGroupEndDate string = '31-12-2024'
