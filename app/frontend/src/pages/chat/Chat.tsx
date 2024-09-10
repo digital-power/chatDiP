@@ -374,8 +374,9 @@ const Chat = () => {
                                 width="120px"
                                 height="120px"
                             />
-                            <h1 className={styles.chatEmptyStateTitle}>Chat with your data</h1>
-                            <h2 className={styles.chatEmptyStateSubtitle}>Ask anything or try an example</h2>
+                            <h1 className={styles.chatEmptyStateTitle}>{currentUsecase?.title}</h1>
+                            <h2 className={styles.chatEmptyStateSubtitle}>{currentUsecase?.sub_title}</h2>
+                            <h3 className={styles.chatEmptyStateDescription}>{currentUsecase?.description}</h3>
                             <ExampleList onExampleClicked={onExampleClicked} currentUsecase={currentUsecase} useGPT4V={useGPT4V} />
                         </div>
                     ) : (
@@ -709,6 +710,9 @@ const Chat = () => {
 
                     {useLogin && <TokenClaimsDisplay />}
                 </Panel>
+            </div>
+            <div className={styles.chatFooter}>
+                <p>IMPORTANT: Always verify the answer from PIM by checking the linked source documents</p>
             </div>
         </div>
     );

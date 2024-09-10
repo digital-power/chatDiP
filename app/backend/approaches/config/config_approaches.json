@@ -3,13 +3,15 @@
         "id": "hr",
         "index_name":"hrdocs-index",
         "container": "hrdocs",
-        "prompt": "Assistant helps the company employees with their supervisory questions. Be brief in your answers. Answer ONLY with the facts listed in the list of sources below. If there isn't enough information below, say you don't know. Do not generate answers that don't use the sources below. If asking a clarifying question to the user would help, ask the question. For tabular information return it as an html table. Do not return markdown format. If the question is not in English, answer in the language used in the question. Each source has a name followed by colon and the actual information, always include the source name for each fact you use in the response. Use square brackets to reference the source, for example [info1.pdf]. Don't combine sources, list each source separately, for example [info1.pdf][info2.pdf][https://../..].",
-        "title": "HR",
+        "title": "Welcome to PIM",
+        "sub_title": "Our Digital Power AI-powered Assistant",
+        "description": "Ask PIM anything or try an example",
+        "prompt": "Assistant helps the company employees with their supervisory questions. Be brief in your answers. Answer ONLY with the facts listed in the list of sources below. If there isn't enough information below, say you don't know. Do not generate answers that don't use the sources below. If asking a clarifying question to the user would help, ask the question. For tabular information return it as an html table. Do not return markdown format. If the sources are available in both Dutch and English, use the source that corresponds with the language used in the question. Each source has a name followed by colon and the actual information, always include the source name for each fact you use in the response. Use square brackets to reference the source, for example [info1.pdf]. Don't combine sources, list each source separately, for example [info1.pdf][info2.pdf][https://../..]. ALWAYS make sure you answer in the same language as the question, translate the source if needed to achieve this.",
         "filters":[],
         "example_questions":[
-            "Wanneer heb ik recht op speciaal verlof?",
-            "Hoe meld ik me ziek?",
-            "Welke dagen zijn feestdagen?"
+            "When am I entitled to special leave?",
+            "How do I report sick?",
+            "Which days are public holidays?"
         ]
     },
     {
@@ -17,6 +19,8 @@
         "index_name":"content-index",
         "container": "content",
         "title": "Demo",
+        "sub_title": "This is a demo",
+        "description": "Ask anything or try an example",
         "prompt": "Assistant helps the company employees with their supervisory questions. Each source has a name followed by colon and the actual information, always include the source name for each fact you use in the response. Answer the following question using only the data provided in the sources below. If asking a clarifying question to the user would help, ask the question. Be brief in your answers. For tabular information return it as an html table. Do not return markdown format. Use square brackets to reference the source, for example [info1.pdf]. Don't combine sources, list each source separately, for example [info1.pdf][info2.pdf]. If you cannot answer using the sources below, say you don't know. If the question is not in English, answer in the language used in the question.",
         "filters":[],
         "example_questions":[

@@ -32,12 +32,26 @@
     font-size: 4.25rem;
     font-weight: 600;
     margin-top: 0;
-    margin-bottom: 30px;
+    margin-bottom: 1px;
 }
 
 .chatEmptyStateSubtitle {
+    font-size: 1.5rem;
     font-weight: 600;
-    margin-bottom: 10px;
+    margin-bottom: 40px;
+}
+
+.chatEmptyStateDescription {
+    font-size: 1.3rem;
+    font-style: italic;
+    margin-bottom: 20px;
+}
+
+.chatFooter {
+    padding: 10px;
+    background-color: #f1f1f1;
+    text-align: center;
+    border-top: 1px solid #ccc;
 }
 
 @media only screen and (max-height: 780px) {
@@ -48,6 +62,21 @@
     .chatEmptyStateTitle {
         font-size: 3rem;
         margin-bottom: 0px;
+    }
+
+    .chatEmptyStateSubtitle {
+        font-size: 1.2rem;
+        margin-bottom: 20px;
+    }
+
+    .chatEmptyStateDescription {
+        font-size: 1rem;
+        margin-bottom: 10px;
+    }
+
+    .chatFooter {
+        padding: 5px;
+        font-size: 0.9rem;
     }
 }
 
