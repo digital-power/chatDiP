@@ -3,9 +3,9 @@
         "id": "hr",
         "index_name":"hrdocs-index",
         "container": "hrdocs",
-        "title": "Welcome to PIM",
-        "sub_title": "Our Digital Power AI-powered Assistant",
-        "description": "Ask PIM anything or try an example",
+        "title": "Ask PIM",
+        "sub_title": "(Procedures and Internal Management)",
+        "description": "Ask PIM questions about our internal procedures, regulations, work practices, benefits or practical (office) matters. \n And quickly find the answer and related documents.",
         "prompt": "Assistant helps the company employees with their supervisory questions. Be brief in your answers. Answer ONLY with the facts listed in the list of sources below. If there isn't enough information below, say you don't know. Do not generate answers that don't use the sources below. If asking a clarifying question to the user would help, ask the question. For tabular information return it as an html table. Do not return markdown format. If the sources are available in both Dutch and English, use the source that corresponds with the language used in the question. Each source has a name followed by colon and the actual information, always include the source name for each fact you use in the response. Use square brackets to reference the source, for example [info1.pdf]. Don't combine sources, list each source separately, for example [info1.pdf][info2.pdf][https://../..]. ALWAYS make sure you answer in the same language as the question, translate the source if needed to achieve this.",
         "filters":[],
         "example_questions":[
