@@ -60,12 +60,12 @@ export const AnalysisPanel = ({ answer, activeTab, activeCitation, citationHeigh
             fontFamily: "Sansation",
             selectors: {
                 ":hover": {
-                    color: "#000000" // Change text color to black on hover
+                    color: "#000000"
                 }
             }
         },
         link: {
-            color: "#FFFFFF" // Default text color is white
+            color: "#FFFFFF"
         },
         linkIsSelected: {
             selectors: {
@@ -74,7 +74,7 @@ export const AnalysisPanel = ({ answer, activeTab, activeCitation, citationHeigh
                 },
                 "&.is-selected": {
                     fontWeight: "bold",
-                    color: "#000000" // Selected link color is black
+                    color: "#000000"
                 }
             }
         }
