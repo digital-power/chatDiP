@@ -56,11 +56,25 @@ export const AnalysisPanel = ({ answer, activeTab, activeCitation, citationHeigh
     }, []);
 
     const pivotStyles: Partial<IPivotStyles> = {
-        linkContent: { fontFamily: "Sansation" },
+        linkContent: {
+            fontFamily: "Sansation",
+            selectors: {
+                ":hover": {
+                    color: "#000000" // Change text color to black on hover
+                }
+            }
+        },
+        link: {
+            color: "#FFFFFF" // Default text color is white
+        },
         linkIsSelected: {
             selectors: {
                 ":before": {
                     backgroundColor: "#044318"
+                },
+                "&.is-selected": {
+                    fontWeight: "bold",
+                    color: "#000000" // Selected link color is black
                 }
             }
         }
