@@ -2,7 +2,7 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    margin-top: 20px;
+    background: radial-gradient(circle at center top, rgba(50, 205, 50, 0.5) 0%, rgba(4, 67, 24, 1) 70%);
 }
 
 .chatRoot {
@@ -16,6 +16,7 @@
     flex-direction: column;
     align-items: center;
     width: 100%;
+    color: #ffffff;
 }
 
 .chatEmptyState {
@@ -25,19 +26,35 @@
     justify-content: center;
     align-items: center;
     max-height: 1024px;
-    padding-top: 60px;
 }
 
 .chatEmptyStateTitle {
     font-size: 4.25rem;
     font-weight: 600;
-    margin-top: 0;
-    margin-bottom: 30px;
+    margin: 0;
+    box-shadow: #b4f23d;
 }
 
 .chatEmptyStateSubtitle {
+    font-size: 1.5rem;
     font-weight: 600;
-    margin-bottom: 10px;
+    margin-top: 2px;
+}
+
+.chatEmptyStateDescription {
+    font-size: 1.1rem;
+    font-style: italic;
+    margin-top: 80px;
+    margin-bottom: 20px;
+    max-width: 600px;
+    word-wrap: break-word;
+    text-align: center;
+}
+
+.chatFooter {
+    padding: 10px;
+    text-align: center;
+    color: #ffffff;
 }
 
 @media only screen and (max-height: 780px) {
@@ -48,6 +65,21 @@
     .chatEmptyStateTitle {
         font-size: 3rem;
         margin-bottom: 0px;
+    }
+
+    .chatEmptyStateSubtitle {
+        font-size: 1.2rem;
+        margin-bottom: 20px;
+    }
+
+    .chatEmptyStateDescription {
+        font-size: 1rem;
+        margin-bottom: 10px;
+    }
+
+    .chatFooter {
+        padding: 5px;
+        font-size: 0.9rem;
     }
 }
 
@@ -61,6 +93,7 @@
     padding-right: 24px;
     display: flex;
     flex-direction: column;
+    color: #044318;
 }
 
 .chatMessageGpt {
@@ -85,7 +118,6 @@
     padding-right: 24px;
     width: 100%;
     max-width: 1028px;
-    background: #f2f2f2;
 }
 
 .chatAnalysisPanel {
@@ -107,6 +139,8 @@
 .commandsContainer {
     display: flex;
     align-self: flex-end;
+    margin-top: 20px;
+    color: #ffffff;
 }
 
 .commandButton {
