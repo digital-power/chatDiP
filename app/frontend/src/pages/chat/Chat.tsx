@@ -40,9 +40,10 @@ import config from "../../../../backend/approaches/config/config_approaches.json
 
 const Chat = () => {
     const defaultPromptTemplate = [
-        "Assistant helps the company employees with their questions. Be brief in your answers.",
+        "Assistant helps the company to respond to client’s emails with their questions. Be brief in your answers. ",
         "Answer ONLY with the facts listed in the list of sources below. If there isn't enough information below, say you don't know.",
         "Do not generate answers that don't use the sources below. If asking a clarifying question to the user would help, ask the question.",
+        "If asking for file or document, just give the document without further elaboration.",
         "For tabular information return it as an html table. Do not return markdown format. If the question is not in English, answer in the language used in the question.",
         "Each source has a name followed by colon and the actual information, always include the source name for each fact you use in the response.",
         "Use square brackets to reference the source, for example [info1.txt]. Don't combine sources, list each source separately, for example [info1.txt][info2.pdf]."
