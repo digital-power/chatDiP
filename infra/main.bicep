@@ -170,7 +170,7 @@ param vmOsOffer string = ''
 param vmSize string = 'Standard_DS1_v2'
 
 @description('Id of the user or app to assign application roles')
-param principalId string = ''
+param principalId string = '32769536-c132-48d9-87e1-bc933fcded7e'
 
 @description('Use Application Insights for monitoring and performance tracing')
 param useApplicationInsights bool = false
@@ -474,7 +474,7 @@ module searchService 'core/search/search-services.bicep' = {
   name: 'search-service'
   scope: searchServiceResourceGroup
   params: {
-    name: !empty(searchServiceName) ? searchServiceName : 'search-service-aide-basic'
+    name: !empty(searchServiceName) ? searchServiceName : 'search-service-aide-basic-bas'
     location: !empty(searchServiceLocation) ? searchServiceLocation : location
     tags: tags
     disableLocalAuth: true
@@ -656,7 +656,7 @@ module openAiRoleSearchService 'core/security/role.bicep' = if (isAzureOpenAiHos
   scope: openAiResourceGroup
   name: 'openai-role-searchservice'
   params: {
-    principalId: searchService.outputs.principalId
+    principalId: '3d0365a3-d3fe-4716-b655-ef27d977558f' // Hard coded test
     roleDefinitionId: '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd'
     principalType: 'ServicePrincipal'
   }
@@ -686,7 +686,7 @@ module storageRoleSearchService 'core/security/role.bicep' = if (useIntegratedVe
   scope: storageResourceGroup
   name: 'storage-role-searchservice'
   params: {
-    principalId: searchService.outputs.principalId
+    principalId: '3d0365a3-d3fe-4716-b655-ef27d977558f' // Hard coded test
     roleDefinitionId: '2a2b9908-6ea1-4ae2-8e65-a410df84e7d1'
     principalType: 'ServicePrincipal'
   }
