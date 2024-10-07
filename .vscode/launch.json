@@ -23,24 +23,36 @@
             ],
             "console": "integratedTerminal",
             "justMyCode": false,
-            "envFile": "${input:dotEnvFilePath}",
+            "envFile": "${input:dotEnvFilePath}"
         },
         {
             "name": "Frontend: watch",
             "type": "node-terminal",
             "request": "launch",
             "command": "npm run dev",
-            "cwd": "${workspaceFolder}/app/frontend",
+            "cwd": "${workspaceFolder}/app/frontend"
         },
         {
             "name": "Python: Debug Tests",
             "type": "debugpy",
             "request": "launch",
             "program": "${file}",
-            "purpose": ["debug-test"],
+            "purpose": [
+                "debug-test"
+            ],
             "console": "integratedTerminal",
             "justMyCode": false
-          }
+        },
+        {
+            "name": "Attach to Python Functions",
+            "type": "debugpy",
+            "request": "attach",
+            "connect": {
+                "host": "localhost",
+                "port": 9091
+            },
+            "preLaunchTask": "func: host start"
+        }
     ],
     "inputs": [
         {
