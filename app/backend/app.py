@@ -18,7 +18,6 @@ from azure.cognitiveservices.speech import (
 from azure.core.exceptions import ResourceNotFoundError
 from azure.identity.aio import (
     AzureDeveloperCliCredential,
-    DefaultAzureCredential,
     ManagedIdentityCredential,
     get_bearer_token_provider,
 )
@@ -382,14 +381,14 @@ async def list_uploaded(auth_claims: dict[str, Any]):
 async def _build_usecase_clients(
     azure_search_service: str,
     azure_storage_account: str,
-    azure_credential: DefaultAzureCredential,
+    azure_credential: Union[AzureDeveloperCliCredential, ManagedIdentityCredential],
 ) -> tuple[dict[Any, SearchClient], dict[Any, ContainerClient]]:
     """Builds search and blob clients for the different use cases
 
     Args:
         azure_search_service (str): The Azure search service name
         azure_storage_account (str): The azure storage account name
-        azure_credential (DefaultAzureCredential): The azure credential to use
+        azure_credential (Union[AzureDeveloperCliCredential, ManagedIdentityCredential]): The azure credential to use
 
     Returns:
         Dict[str, SearchClient]: A dictionary of search clients for the different use cases
