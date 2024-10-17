@@ -1,4 +1,5 @@
 import { Example } from "./Example";
+import { useTranslation } from "react-i18next";
 
 import styles from "./Example.module.css";
 import config from "../../../../backend/approaches/config/config_approaches.json";
@@ -17,7 +18,8 @@ interface Props {
     currentUsecase: Usecase;
 }
 
-export const ExampleList = ({ onExampleClicked, currentUsecase }: Props) => {
+export const ExampleList = ({ onExampleClicked, currentUsecase, useGPT4V }: Props) => {
+    const { t } = useTranslation();
     const examples: string[] = currentUsecase?.example_questions ?? DEFAULT_EXAMPLES;
 
     return (
