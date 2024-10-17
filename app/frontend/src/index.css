@@ -2,17 +2,10 @@
     box-sizing: border-box;
 }
 
-html,
-body {
-    height: 100%;
-    margin: 0;
-    padding: 0;
-}
-
 html {
     background: #f2f2f2;
     color: #11271a;
-
+    font-size: 12px; /* Root font size for 320px width screens */
     font-family:
         "Sansation",
         "Segoe UI",
@@ -28,9 +21,38 @@ html {
         sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    font-size: 14px;
+}
+
+body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
 }
 
 #root {
     height: 100%;
+}
+
+@media (min-width: 480px) {
+    html {
+        font-size: 13px; /* Slightly larger font size for larger phones */
+    }
+}
+
+@media (min-width: 600px) {
+    html {
+        font-size: 14px; /* Adjust for small tablets and large phones in landscape */
+    }
+}
+
+@media (min-width: 768px) {
+    html {
+        font-size: 15px; /* Suitable for medium tablets */
+    }
+}
+
+@media (min-width: 992px) {
+    html {
+        font-size: 16px; /* Standard size for desktops */
+    }
 }

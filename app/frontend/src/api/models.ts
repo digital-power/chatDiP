@@ -21,6 +21,7 @@ export type ChatAppRequestOverrides = {
     semantic_ranker?: boolean;
     semantic_captions?: boolean;
     exclude_category?: string;
+    seed?: number;
     top?: number;
     temperature?: number;
     minimum_search_score?: number;
@@ -35,6 +36,7 @@ export type ChatAppRequestOverrides = {
     gpt4v_input?: GPT4VInput;
     vector_fields: VectorFieldOptions[];
     usecase: string;
+    language: string;
 };
 
 export type ResponseMessage = {
@@ -84,11 +86,21 @@ export type Config = {
     showSemanticRankerOption: boolean;
     showVectorOption: boolean;
     showUserUpload: boolean;
+    showLanguagePicker: boolean;
     showSpeechInput: boolean;
     showSpeechOutputBrowser: boolean;
     showSpeechOutputAzure: boolean;
+    showChatHistoryBrowser: boolean;
 };
 
 export type SimpleAPIResponse = {
     message?: string;
 };
+
+export interface SpeechConfig {
+    speechUrls: (string | null)[];
+    setSpeechUrls: (urls: (string | null)[]) => void;
+    audio: HTMLAudioElement;
+    isPlaying: boolean;
+    setIsPlaying: (isPlaying: boolean) => void;
+}

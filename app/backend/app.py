@@ -16,7 +16,12 @@ from azure.cognitiveservices.speech import (
     SpeechSynthesizer,
 )
 from azure.core.exceptions import ResourceNotFoundError
-from azure.identity.aio import DefaultAzureCredential, get_bearer_token_provider
+from azure.identity.aio import (
+    AzureDeveloperCliCredential,
+    DefaultAzureCredential,
+    ManagedIdentityCredential,
+    get_bearer_token_provider,
+)
 from azure.monitor.opentelemetry import configure_azure_monitor
 from azure.search.documents.aio import SearchClient
 from azure.search.documents.indexes.aio import SearchIndexClient
@@ -56,10 +61,12 @@ from config import (
     CONFIG_AUTH_CLIENT,
     CONFIG_BLOB_CONTAINER_CLIENTS,
     CONFIG_CHAT_APPROACH,
+    CONFIG_CHAT_HISTORY_BROWSER_ENABLED,
     CONFIG_CHAT_VISION_APPROACH,
     CONFIG_CREDENTIAL,
     CONFIG_GPT4V_DEPLOYED,
     CONFIG_INGESTER,
+    CONFIG_LANGUAGE_PICKER_ENABLED,
     CONFIG_OPENAI_CLIENT,
     CONFIG_SEARCH_CLIENTS,
     CONFIG_SEMANTIC_RANKER_DEPLOYED,
@@ -75,6 +82,7 @@ from config import (
     CONFIG_VECTOR_SEARCH_ENABLED,
 )
 from core.authentication import AuthenticationHelper
+from core.sessionhelper import create_session_id
 from decorators import authenticated, authenticated_path
 from error import error_dict, error_response
 from prepdocs import (
@@ -138,7 +146,7 @@ async def content_file(usecase: str, path: str, auth_claims: Dict[str, Any]):
     try:
         blob = await blob_container_client.get_blob_client(path).download_blob()
     except ResourceNotFoundError:
-        logging.info("Path not found in general Blob container: %s", path)
+        current_app.logger.info("Path not found in general Blob container: %s", path)
         if current_app.config[CONFIG_USER_UPLOAD_ENABLED]:
             try:
                 user_oid = auth_claims["oid"]
@@ -147,7 +155,7 @@ async def content_file(usecase: str, path: str, auth_claims: Dict[str, Any]):
                 file_client = user_directory_client.get_file_client(path)
                 blob = await file_client.download_file()
             except ResourceNotFoundError:
-                logging.exception("Path not found in DataLake: %s", path)
+                current_app.logger.exception("Path not found in DataLake: %s", path)
                 abort(404)
         else:
             abort(404)
@@ -164,7 +172,7 @@ async def content_file(usecase: str, path: str, auth_claims: Dict[str, Any]):
 
 class JSONEncoder(json.JSONEncoder):
     def default(self, o):
-        if dataclasses.is_dataclass(o):
+        if dataclasses.is_dataclass(o) and not isinstance(o, type):
             return dataclasses.asdict(o)
         return super().default(o)
 
@@ -194,10 +202,17 @@ async def chat(auth_claims: Dict[str, Any]):
         else:
             approach = cast(Approach, current_app.config[CONFIG_CHAT_APPROACH])
 
-        r = await approach.run(
-            request_json["messages"], context=context, session_state=request_json.get("session_state")
+        # If session state is provided, persists the session state,
+        # else creates a new session_id depending on the chat history options enabled.
+        session_state = request_json.get("session_state")
+        if session_state is None:
+            session_state = create_session_id(current_app.config[CONFIG_CHAT_HISTORY_BROWSER_ENABLED])
+        result = await approach.run(
+            request_json["messages"],
+            context=context,
+            session_state=session_state,
         )
-        return jsonify(r)
+        return jsonify(result)
     except Exception as error:
         return error_response(error, "/chat")
 
@@ -218,10 +233,15 @@ async def chat_stream(auth_claims: Dict[str, Any]):
         else:
             approach = cast(Approach, current_app.config[CONFIG_CHAT_APPROACH])
 
+        # If session state is provided, persists the session state,
+        # else creates a new session_id depending on the chat history options enabled.
+        session_state = request_json.get("session_state")
+        if session_state is None:
+            session_state = create_session_id(current_app.config[CONFIG_CHAT_HISTORY_BROWSER_ENABLED])
         result = await approach.run_stream(
             request_json["messages"],
             context=context,
-            session_state=request_json.get("session_state"),
+            session_state=session_state,
         )
         response = await make_response(format_as_ndjson(result))
         response.timeout = None  # type: ignore
@@ -246,9 +266,11 @@ def config():
             "showSemanticRankerOption": current_app.config[CONFIG_SEMANTIC_RANKER_DEPLOYED],
             "showVectorOption": current_app.config[CONFIG_VECTOR_SEARCH_ENABLED],
             "showUserUpload": current_app.config[CONFIG_USER_UPLOAD_ENABLED],
+            "showLanguagePicker": current_app.config[CONFIG_LANGUAGE_PICKER_ENABLED],
             "showSpeechInput": current_app.config[CONFIG_SPEECH_INPUT_ENABLED],
             "showSpeechOutputBrowser": current_app.config[CONFIG_SPEECH_OUTPUT_BROWSER_ENABLED],
             "showSpeechOutputAzure": current_app.config[CONFIG_SPEECH_OUTPUT_AZURE_ENABLED],
+            "showChatHistoryBrowser": current_app.config[CONFIG_CHAT_HISTORY_BROWSER_ENABLED],
         }
     )
 
@@ -293,7 +315,7 @@ async def speech():
             current_app.logger.error("Unexpected result reason: %s", result.reason)
             raise Exception("Speech synthesis failed. Check logs for details.")
     except Exception as e:
-        logging.exception("Exception in /speech")
+        current_app.logger.exception("Exception in /speech")
         return jsonify({"error": str(e)}), 500
 
 
@@ -462,15 +484,39 @@ async def setup_clients():
     USE_GPT4V = os.getenv("USE_GPT4V", "").lower() == "true"
 
     USE_USER_UPLOAD = os.getenv("USE_USER_UPLOAD", "").lower() == "true"
+    ENABLE_LANGUAGE_PICKER = os.getenv("ENABLE_LANGUAGE_PICKER", "").lower() == "true"
     USE_SPEECH_INPUT_BROWSER = os.getenv("USE_SPEECH_INPUT_BROWSER", "").lower() == "true"
     USE_SPEECH_OUTPUT_BROWSER = os.getenv("USE_SPEECH_OUTPUT_BROWSER", "").lower() == "true"
     USE_SPEECH_OUTPUT_AZURE = os.getenv("USE_SPEECH_OUTPUT_AZURE", "").lower() == "true"
+    USE_CHAT_HISTORY_BROWSER = os.getenv("USE_CHAT_HISTORY_BROWSER", "").lower() == "true"
 
-    # Use the current user identity to authenticate with Azure OpenAI, AI Search and Blob Storage (no secrets needed,
-    # just use 'az login' locally, and managed identity when deployed on Azure). If you need to use keys, use separate AzureKeyCredential instances with the
-    # keys for each service
-    # If you encounter a blocking error during a DefaultAzureCredential resolution, you can exclude the problematic credential by using a parameter (ex. exclude_shared_token_cache_credential=True)
-    azure_credential = DefaultAzureCredential(exclude_shared_token_cache_credential=True)
+    # WEBSITE_HOSTNAME is always set by App Service, RUNNING_IN_PRODUCTION is set in main.bicep
+    RUNNING_ON_AZURE = os.getenv("WEBSITE_HOSTNAME") is not None or os.getenv("RUNNING_IN_PRODUCTION") is not None
+
+    # Use the current user identity for keyless authentication to Azure services.
+    # This assumes you use 'azd auth login' locally, and managed identity when deployed on Azure.
+    # The managed identity is setup in the infra/ folder.
+    azure_credential: Union[AzureDeveloperCliCredential, ManagedIdentityCredential]
+    if RUNNING_ON_AZURE:
+        current_app.logger.info("Setting up Azure credential using ManagedIdentityCredential")
+        if AZURE_CLIENT_ID := os.getenv("AZURE_CLIENT_ID"):
+            # ManagedIdentityCredential should use AZURE_CLIENT_ID if set in env, but its not working for some reason,
+            # so we explicitly pass it in as the client ID here. This is necessary for user-assigned managed identities.
+            current_app.logger.info(
+                "Setting up Azure credential using ManagedIdentityCredential with client_id %s", AZURE_CLIENT_ID
+            )
+            azure_credential = ManagedIdentityCredential(client_id=AZURE_CLIENT_ID)
+        else:
+            current_app.logger.info("Setting up Azure credential using ManagedIdentityCredential")
+            azure_credential = ManagedIdentityCredential()
+    elif AZURE_TENANT_ID:
+        current_app.logger.info(
+            "Setting up Azure credential using AzureDeveloperCliCredential with tenant_id %s", AZURE_TENANT_ID
+        )
+        azure_credential = AzureDeveloperCliCredential(tenant_id=AZURE_TENANT_ID, process_timeout=60)
+    else:
+        current_app.logger.info("Setting up Azure credential using AzureDeveloperCliCredential for home tenant")
+        azure_credential = AzureDeveloperCliCredential(process_timeout=60)
 
     # Set up clients for AI Search and Storage
 
@@ -484,6 +530,7 @@ async def setup_clients():
     # Set up authentication helper
     search_index = None
     if AZURE_USE_AUTHENTICATION:
+        current_app.logger.info("AZURE_USE_AUTHENTICATION is true, setting up search index client")
         search_index_client = SearchIndexClient(
             endpoint=f"https://{AZURE_SEARCH_SERVICE}.search.windows.net",
             credential=azure_credential,
@@ -547,6 +594,7 @@ async def setup_clients():
     # Used by the OpenAI SDK
     openai_client: AsyncOpenAI
     if USE_SPEECH_OUTPUT_AZURE:
+        current_app.logger.info("USE_SPEECH_OUTPUT_AZURE is true, setting up Azure speech service")
         if not AZURE_SPEECH_SERVICE_ID or AZURE_SPEECH_SERVICE_ID == "":
             raise ValueError("Azure speech resource not configured correctly, missing AZURE_SPEECH_SERVICE_ID")
         if not AZURE_SPEECH_SERVICE_LOCATION or AZURE_SPEECH_SERVICE_LOCATION == "":
@@ -562,17 +610,20 @@ async def setup_clients():
         api_version = os.getenv("AZURE_OPENAI_API_VERSION") or "2024-03-01-preview"
 
         if OPENAI_HOST == "azure_custom":
+            current_app.logger.info("OPENAI_HOST is azure_custom, setting up Azure OpenAI custom client")
             if not AZURE_OPENAI_CUSTOM_URL:
                 raise ValueError("AZURE_OPENAI_CUSTOM_URL must be set when OPENAI_HOST is azure_custom")
             endpoint = AZURE_OPENAI_CUSTOM_URL
         else:
+            current_app.logger.info("OPENAI_HOST is azure, setting up Azure OpenAI client")
             if not AZURE_OPENAI_SERVICE:
                 raise ValueError("AZURE_OPENAI_SERVICE must be set when OPENAI_HOST is azure")
             endpoint = f"https://{AZURE_OPENAI_SERVICE}.openai.azure.com"
-
-        if api_key := os.getenv("AZURE_OPENAI_API_KEY"):
+        if api_key := os.getenv("AZURE_OPENAI_API_KEY_OVERRIDE"):
+            current_app.logger.info("AZURE_OPENAI_API_KEY_OVERRIDE found, using as api_key for Azure OpenAI client")
             openai_client = AsyncAzureOpenAI(api_version=api_version, azure_endpoint=endpoint, api_key=api_key)
         else:
+            current_app.logger.info("Using Azure credential (passwordless authentication) for Azure OpenAI client")
             token_provider = get_bearer_token_provider(azure_credential, "https://cognitiveservices.azure.com/.default")
             openai_client = AsyncAzureOpenAI(
                 api_version=api_version,
@@ -580,11 +631,15 @@ async def setup_clients():
                 azure_ad_token_provider=token_provider,
             )
     elif OPENAI_HOST == "local":
+        current_app.logger.info("OPENAI_HOST is local, setting up local OpenAI client for OPENAI_BASE_URL with no key")
         openai_client = AsyncOpenAI(
             base_url=os.environ["OPENAI_BASE_URL"],
             api_key="no-key-required",
         )
     else:
+        current_app.logger.info(
+            "OPENAI_HOST is not azure, setting up OpenAI client using OPENAI_API_KEY and OPENAI_ORGANIZATION environment variables"
+        )
         openai_client = AsyncOpenAI(
             api_key=OPENAI_API_KEY,
             organization=OPENAI_ORGANIZATION,
@@ -599,9 +654,11 @@ async def setup_clients():
     current_app.config[CONFIG_SEMANTIC_RANKER_DEPLOYED] = AZURE_SEARCH_SEMANTIC_RANKER != "disabled"
     current_app.config[CONFIG_VECTOR_SEARCH_ENABLED] = os.getenv("USE_VECTORS", "").lower() != "false"
     current_app.config[CONFIG_USER_UPLOAD_ENABLED] = bool(USE_USER_UPLOAD)
+    current_app.config[CONFIG_LANGUAGE_PICKER_ENABLED] = ENABLE_LANGUAGE_PICKER
     current_app.config[CONFIG_SPEECH_INPUT_ENABLED] = USE_SPEECH_INPUT_BROWSER
     current_app.config[CONFIG_SPEECH_OUTPUT_BROWSER_ENABLED] = USE_SPEECH_OUTPUT_BROWSER
     current_app.config[CONFIG_SPEECH_OUTPUT_AZURE_ENABLED] = USE_SPEECH_OUTPUT_AZURE
+    current_app.config[CONFIG_CHAT_HISTORY_BROWSER_ENABLED] = USE_CHAT_HISTORY_BROWSER
 
     # Various approaches to integrate GPT and external knowledge, most applications will use a single one of these patterns
     # or some derivative, here we include several for exploration purposes
@@ -699,6 +756,7 @@ def create_app():
     app.register_blueprint(bp)
 
     if os.getenv("APPLICATIONINSIGHTS_CONNECTION_STRING"):
+        app.logger.info("APPLICATIONINSIGHTS_CONNECTION_STRING is set, enabling Azure Monitor")
         configure_azure_monitor()
         # This tracks HTTP requests made by aiohttp:
         AioHttpClientInstrumentor().instrument()
@@ -709,13 +767,15 @@ def create_app():
         # This middleware tracks app route requests:
         app.asgi_app = OpenTelemetryMiddleware(app.asgi_app)  # type: ignore[assignment]
 
-    # Level should be one of https://docs.python.org/3/library/logging.html#logging-levels
-    default_level = "INFO"  # In development, log more verbosely
-    if os.getenv("WEBSITE_HOSTNAME"):  # In production, don't log as heavily
-        default_level = "WARNING"
-    logging.basicConfig(level=os.getenv("APP_LOG_LEVEL", default_level))
+    # Log levels should be one of https://docs.python.org/3/library/logging.html#logging-levels
+    # Set root level to WARNING to avoid seeing overly verbose logs from SDKS
+    logging.basicConfig(level=logging.WARNING)
+    # Set our own logger levels to INFO by default
+    app_level = os.getenv("APP_LOG_LEVEL", "INFO")
+    app.logger.setLevel(os.getenv("APP_LOG_LEVEL", app_level))
+    logging.getLogger("scripts").setLevel(app_level)
 
     if allowed_origin := os.getenv("ALLOWED_ORIGIN"):
-        app.logger.info("CORS enabled for %s", allowed_origin)
+        app.logger.info("ALLOWED_ORIGIN is set, enabling CORS for %s", allowed_origin)
         cors(app, allow_origin=allowed_origin, allow_methods=["GET", "POST"])
     return app
