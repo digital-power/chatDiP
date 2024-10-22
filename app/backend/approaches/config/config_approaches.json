@@ -16,8 +16,8 @@
     },
     {
         "id": "demo",
-        "index_name":"content-index",
-        "container": "content",
+        "index_name":"document-intelligence-index",
+        "container": "content", 
         "title": "Demo",
         "sub_title": "This is a demo",
         "description": "Ask anything or try an example",

@@ -9,8 +9,8 @@ param environmentName string
 @description('Primary location for all resources')
 param location string
 
-param resourceGroupCreatedBy string = 'Myrthe Lammerse'
-param resourceGroupProject string = 'ChatDIP'
+param resourceGroupCreatedBy string = 'Bas Verburg'
+param resourceGroupProject string = 'ChatDIP Custom'
 param resourceGroupProjectCode string = 'ZO'
 param resourceGroupPurpose string = 'Internal Project'
 param resourceGroupEndDate string = '31-12-2024'
