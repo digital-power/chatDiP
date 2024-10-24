@@ -140,6 +140,7 @@ async def SplitMarkdownDocument(req: func.HttpRequest) -> func.HttpResponse:
 
         # Iterate through the content dictionary, where each key is a page number and value is a list of strings
         chunks = []
+        logging.info(data)
         for page_number, page_content_list in data["content"].items():
             # Join the list of strings into one text block for each page
             page_text = "\n".join(page_content_list)
@@ -155,7 +156,8 @@ async def SplitMarkdownDocument(req: func.HttpRequest) -> func.HttpResponse:
                 chunk_data = {
                     "content": document.page_content,
                     "headers": [document.metadata[header] for header in sorted(document.metadata.keys())],
-                    "page_number": int(page_number)
+                    "page_number": page_number,
+                    "fullpath": f"RvA-Financieelverslag-2022.pdf#page={page_number}"
                 }
 
                 chunks.append(chunk_data)
@@ -235,6 +237,7 @@ async def ReadDocument(req: func.HttpRequest) -> func.HttpResponse:
                 result_content.append(await process_file(client, record_id, data["file_data"], data["mode"]))
             else:
                 # type: ignore
+                logging.info(data["sas_uri"])
                 result_content.append(await process_sas_uri(client, record_id, data["sas_uri"], data["mode"]))
 
     response = {"values": result_content}
@@ -274,7 +277,7 @@ async def process_file(client: DocumentIntelligenceClient, record_id: str, file:
             "prebuilt-layout", analyze_request=file_data, content_type="application/octet-stream", output_content_format=mode, features=["ocrHighResolution"]
         )
         result = await poller.result()
-
+        logging.info(f"result file_data: {result}")
         page_content = await extract_page_number(result)
 
         return {
@@ -300,9 +303,10 @@ async def process_sas_uri(client: DocumentIntelligenceClient, record_id: str, sa
             "prebuilt-layout", analyze_request=AnalyzeDocumentRequest(url_source=sas_uri), output_content_format=mode, features=["ocrHighResolution"]
         )
         result = await poller.result()
-
+        result['sas_uri'] = sas_uri
         page_content = await extract_page_number(result)
 
+        logging.info(page_content)
         return {
             "recordId": record_id,
             "data": {"content": page_content}
@@ -323,10 +327,21 @@ async def process_sas_uri(client: DocumentIntelligenceClient, record_id: str, sa
 
 async def extract_page_number(result) -> dict:
     page_content = {}
+
+    if 'sas_uri' in result:
+        sas_uri = result['sas_uri']
+        
+    else:
+        raise ValueError("sas_uri ontbreekt in result")
+
     for page in result.pages:
         page_number = page.page_number
-        if page_number not in page_content:
-            page_content[page_number] = []
+        key = f"{sas_uri}#page={page_number}"
+
+        if key not in page_content:
+            page_content[key] = []
+
         for line in page.lines:
-            page_content[page_number].append(line.content)
+            page_content[key].append(line.content)
+
     return page_content
