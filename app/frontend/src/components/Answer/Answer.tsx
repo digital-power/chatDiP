@@ -41,6 +41,7 @@ export const Answer = ({
 }: Props) => {
     const followupQuestions = answer.context?.followup_questions;
     const messageContent = answer.message.content;
+    console.log(messageContent)
     const parsedAnswer = useMemo(() => parseAnswerToHtml(messageContent, isStreaming, onCitationClicked), [answer]);
 
     const sanitizedAnswerHtml = DOMPurify.sanitize(parsedAnswer.answerHtml);

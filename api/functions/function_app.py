@@ -140,7 +140,6 @@ async def SplitMarkdownDocument(req: func.HttpRequest) -> func.HttpResponse:
 
         # Iterate through the content dictionary, where each key is a page number and value is a list of strings
         chunks = []
-        logging.info(data)
         for page_number, page_content_list in data["content"].items():
             # Join the list of strings into one text block for each page
             page_text = "\n".join(page_content_list)
@@ -237,7 +236,6 @@ async def ReadDocument(req: func.HttpRequest) -> func.HttpResponse:
                 result_content.append(await process_file(client, record_id, data["file_data"], data["mode"]))
             else:
                 # type: ignore
-                logging.info(data["sas_uri"])
                 result_content.append(await process_sas_uri(client, record_id, data["sas_uri"], data["mode"]))
 
     response = {"values": result_content}
@@ -277,7 +275,6 @@ async def process_file(client: DocumentIntelligenceClient, record_id: str, file:
             "prebuilt-layout", analyze_request=file_data, content_type="application/octet-stream", output_content_format=mode, features=["ocrHighResolution"]
         )
         result = await poller.result()
-        logging.info(f"result file_data: {result}")
         page_content = await extract_page_number(result)
 
         return {
