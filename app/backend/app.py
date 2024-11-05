@@ -8,6 +8,7 @@ import time
 from pathlib import Path
 from typing import Any, AsyncGenerator, Dict, Union, cast
 
+import aiohttp
 from azure.cognitiveservices.speech import (
     ResultReason,
     SpeechConfig,
@@ -75,7 +76,7 @@ from config import (
     CONFIG_VECTOR_SEARCH_ENABLED,
 )
 from core.authentication import AuthenticationHelper
-from decorators import authenticated, authenticated_path
+from decorators import authenticated, authenticated_path, with_access_token
 from error import error_dict, error_response
 from prepdocs import (
     clean_key_if_exists,
@@ -113,9 +114,41 @@ async def favicon():
 async def assets(path):
     return await send_from_directory(Path(__file__).resolve().parent / "static" / "assets", path)
 
-
-@bp.route("/content/usecase/<usecase>/<path>")
+@bp.route("/content/usecase/<usecase>/<path:path>")
 @authenticated_path
+async def download_citation_file(usecase: str, path: str, auth_claims: Dict[str, Any]):
+    if path.split('/')[0]=="drives":
+        if path.find("#page=") > 0:
+            path_parts = path.rsplit("#page=", 1)
+            path = path_parts[0]
+        logging.info("Opening file %s for usecase %s", path, usecase)
+
+        drive_id = path.split('/')[1]
+        file_path = path.split(':')[1]
+        # Download and send the file
+        return await download_file_from_sharepoint(drive_id=drive_id, file_path=file_path)
+    else:
+        await content_file(usecase, path, auth_claims)
+
+@with_access_token
+async def download_file_from_sharepoint(drive_id, file_path, access_token):
+        graph_url = f"https://graph.microsoft.com/v1.0/drives/{drive_id}/root:/{file_path}:/content"
+        headers = {"Authorization": f"Bearer {access_token}"}
+
+        async with aiohttp.ClientSession() as session:
+            async with session.get(graph_url, headers=headers) as response:
+                if response.status == 404:
+                    logging.info("File not found in Sharepoint: %s", file_path)
+                    abort(404)
+                elif response.status != 200:
+                    logging.error("Failed to download file: %s", response.status)
+                    abort(response.status)
+                blob_file = io.BytesIO(await response.read())
+                blob_file.seek(0)
+                mime_type = mimetypes.guess_type(file_path)[0] or "application/octet-stream"
+                return await send_file(blob_file, mimetype=mime_type, as_attachment=False,
+                                       attachment_filename=file_path)
+
 async def content_file(usecase: str, path: str, auth_claims: Dict[str, Any]):
     """
     Serve content files from blob storage from within the app to keep the example self-contained.
