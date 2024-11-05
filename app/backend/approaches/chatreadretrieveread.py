@@ -178,6 +178,7 @@ class ChatReadRetrieveReadApproach(ChatApproach):
         )
 
         sources_content = self.get_sources_content(results, use_semantic_captions, use_image_citation=False)
+        citations = self.get_citation_metadata(results, use_image_citation=False)
         content = "\n".join(sources_content)
 
         # STEP 3: Generate a contextual and content specific answer using the search results and chat history
@@ -202,6 +203,7 @@ class ChatReadRetrieveReadApproach(ChatApproach):
 
         extra_info = {
             "data_points": data_points,
+            "citations": citations,
             "thoughts": [
                 ThoughtStep(
                     "Prompt to generate search query",
