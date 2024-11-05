@@ -1,7 +1,9 @@
 import logging
+import os
 from functools import wraps
 from typing import Any, Callable, Dict
 
+import aiohttp
 from quart import abort, current_app, request
 
 from approaches.utils import usecase_exists
@@ -57,3 +59,33 @@ def authenticated(route_fn: Callable[[Dict[str, Any]], Any]):
         return await route_fn(auth_claims)
 
     return auth_handler
+
+
+def with_access_token(func):
+    """
+    Decorator for routes that require an OAuth2 access token.
+    Obtains an access token from Azure Active Directory using client credentials
+    and passes it to the decorated function as an additional argument.
+
+    This decorator is designed to be used with asynchronous route handlers.
+    """
+    @wraps(func)
+    async def wrapper(*args, **kwargs):
+        # Define the function to get the access token
+        token_url = f"https://login.microsoftonline.com/{os.getenv('AZURE_TENANT_ID')}/oauth2/v2.0/token"
+        headers = {"Content-Type": "application/x-www-form-urlencoded"}
+        data = {
+            "client_id": os.getenv('AZURE_APPLICATION_ID'),
+            "scope": "https://graph.microsoft.com/.default",
+            "client_secret": os.getenv('AZURE_APPLICATION_SECRET'),
+            "grant_type": "client_credentials"
+        }
+
+        async with aiohttp.ClientSession() as session:
+            async with session.post(token_url, headers=headers, data=data) as response:
+                response_data = await response.json()
+                access_token = response_data.get("access_token")
+
+        return await func(*args, access_token=access_token, **kwargs)
+
+    return wrapper
