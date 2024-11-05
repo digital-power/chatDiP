@@ -6,9 +6,9 @@ import mimetypes
 import os
 import time
 from pathlib import Path
-from typing import Any, AsyncGenerator, Dict, Union, cast
+from typing import Any, AsyncGenerator, Dict, Union, cast, Tuple
 
-import aiohttp
+from aiohttp import ClientSession
 from azure.cognitiveservices.speech import (
     ResultReason,
     SpeechConfig,
@@ -114,12 +114,27 @@ async def favicon():
 async def assets(path):
     return await send_from_directory(Path(__file__).resolve().parent / "static" / "assets", path)
 
+
 @with_access_token
-async def fetch_file_from_sharepoint(drive_id, file_path, access_token):
+async def fetch_file_from_sharepoint(drive_id: str, file_path: str, access_token: str) -> Tuple[io.BytesIO, str]:
+    """
+    Fetch a file from SharePoint using the Microsoft Graph API.
+
+    Args:
+        drive_id (str): The ID of the drive in SharePoint.
+        file_path (str): The path of the file within the drive.
+        access_token (str): The OAuth2 access token for authorization.
+
+    Returns:
+        Tuple[io.BytesIO, str]: A tuple containing the file as a BytesIO object and its MIME type.
+
+    Raises:
+        abort: If the file is not found or if the download fails.
+    """
     graph_url = f"https://graph.microsoft.com/v1.0/drives/{drive_id}/root:/{file_path}:/content"
     headers = {"Authorization": f"Bearer {access_token}"}
 
-    async with aiohttp.ClientSession() as session:
+    async with ClientSession() as session:
         async with session.get(graph_url, headers=headers) as response:
             if response.status == 404:
                 logging.info("File not found in SharePoint: %s", file_path)
@@ -127,6 +142,8 @@ async def fetch_file_from_sharepoint(drive_id, file_path, access_token):
             elif response.status != 200:
                 logging.error("Failed to download file: %s", response.status)
                 abort(response.status)
+
+            # Read the file content into a BytesIO object
             blob_file = io.BytesIO(await response.read())
             blob_file.seek(0)
             mime_type = mimetypes.guess_type(file_path)[0] or "application/octet-stream"
@@ -134,18 +151,33 @@ async def fetch_file_from_sharepoint(drive_id, file_path, access_token):
             return blob_file, mime_type
 
 
-async def fetch_file_from_blob(usecase: str, path: str, auth_claims: Dict[str, Any]):
+async def fetch_file_from_blob(usecase: str, path: str, auth_claims: Dict[str, Any]) -> Tuple[io.BytesIO, str]:
+    """
+    Fetch a file from Azure Blob Storage.
+
+    Args:
+        usecase (str): The use case identifier for accessing the correct blob container.
+        path (str): The path of the file in blob storage.
+        auth_claims (Dict[str, Any]): The authentication claims of the user.
+
+    Returns:
+        Tuple[io.BytesIO, str]: A tuple containing the file as a BytesIO object and its MIME type.
+
+    Raises:
+        abort: If the file is not found in either the general blob container or the user’s directory.
+    """
     blob_container_client: ContainerClient = current_app.config[CONFIG_BLOB_CONTAINER_CLIENTS][usecase]
-    blob: Union[BlobDownloader, DatalakeDownloader]
     try:
         blob = await blob_container_client.get_blob_client(path).download_blob()
     except ResourceNotFoundError:
         logging.info("Path not found in general Blob container: %s", path)
+
+        # Attempt to access user-specific uploads if enabled
         if current_app.config[CONFIG_USER_UPLOAD_ENABLED]:
             try:
                 user_oid = auth_claims["oid"]
                 user_blob_container_client = current_app.config[CONFIG_USER_BLOB_CONTAINER_CLIENT]
-                user_directory_client: FileSystemClient = user_blob_container_client.get_directory_client(user_oid)
+                user_directory_client = user_blob_container_client.get_directory_client(user_oid)
                 file_client = user_directory_client.get_file_client(path)
                 blob = await file_client.download_file()
             except ResourceNotFoundError:
@@ -153,45 +185,57 @@ async def fetch_file_from_blob(usecase: str, path: str, auth_claims: Dict[str, A
                 abort(404)
         else:
             abort(404)
-    if not blob.properties or not blob.properties.has_key("content_settings"):
+
+    if not blob.properties or "content_settings" not in blob.properties:
         abort(404)
+
     mime_type = blob.properties["content_settings"]["content_type"]
     if mime_type == "application/octet-stream":
         mime_type = mimetypes.guess_type(path)[0] or "application/octet-stream"
+
+    # Read the blob content into a BytesIO object
     blob_file = io.BytesIO()
     await blob.readinto(blob_file)
     blob_file.seek(0)
     return blob_file, mime_type
 
+
 @bp.route("/content/usecase/<usecase>/<path:path>")
 @authenticated_path
 async def content_file(usecase: str, path: str, auth_claims: Dict[str, Any]):
     """
-    Serve content files from blob storage from within the app to keep the example self-contained.
-    *** NOTE *** if you are using app services authentication, this route will return unauthorized to all users that are not logged in
-    if AZURE_ENFORCE_ACCESS_CONTROL is not set or false, logged in users can access all files regardless of access control
-    if AZURE_ENFORCE_ACCESS_CONTROL is set to true, logged in users can only access files they have access to
-    This is also slow and memory hungry.
+    Serve content files from either SharePoint or Azure Blob Storage based on the requested path.
+
+    Args:
+        usecase (str): The use case identifier to determine which usecase to use.
+        path (str): The path of the file being requested.
+        auth_claims (Dict[str, Any]): The authentication claims of the user.
+
+    Returns:
+        Response: The file sent as a response to the client.
+
+    Raises:
+        abort: If the use case does not exist or if the file cannot be found.
     """
-    # Check if use case exists
+    # Ensure the use case exists
     assert usecase_exists(usecase), f"Use case `{usecase}` not found"
 
-    # Remove page number from path, filename-1.txt -> filename.txt
-    # This shouldn't typically be necessary as browsers don't send hash fragments to servers
-    if path.find("#page=") > 0:
-        path_parts = path.rsplit("#page=", 1)
-        path = path_parts[0]
+    # Clean up path if it includes a page fragment
+    if "#page=" in path:
+        path = path.rsplit("#page=", 1)[0]
+
     logging.info("Opening file %s for usecase %s", path, usecase)
 
-    if path.split('/')[0]=="drives":
+    if path.split('/')[0] == "drives":
+        # Handle SharePoint file request
         drive_id = path.split('/')[1]
         file_path = path.split(':')[1]
-        # Download and send the file
         blob_file, mime_type = await fetch_file_from_sharepoint(drive_id=drive_id, file_path=file_path)
     else:
+        # Handle Azure Blob Storage request
         blob_file, mime_type = await fetch_file_from_blob(usecase, path, auth_claims)
 
-
+    # Send the file as a response
     return await send_file(blob_file, mimetype=mime_type, as_attachment=False, attachment_filename=path)
 
 
