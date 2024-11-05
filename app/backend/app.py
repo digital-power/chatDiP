@@ -114,58 +114,27 @@ async def favicon():
 async def assets(path):
     return await send_from_directory(Path(__file__).resolve().parent / "static" / "assets", path)
 
-@bp.route("/content/usecase/<usecase>/<path:path>")
-@authenticated_path
-async def download_citation_file(usecase: str, path: str, auth_claims: Dict[str, Any]):
-    if path.split('/')[0]=="drives":
-        if path.find("#page=") > 0:
-            path_parts = path.rsplit("#page=", 1)
-            path = path_parts[0]
-        logging.info("Opening file %s for usecase %s", path, usecase)
-
-        drive_id = path.split('/')[1]
-        file_path = path.split(':')[1]
-        # Download and send the file
-        return await download_file_from_sharepoint(drive_id=drive_id, file_path=file_path)
-    else:
-        await content_file(usecase, path, auth_claims)
-
 @with_access_token
-async def download_file_from_sharepoint(drive_id, file_path, access_token):
-        graph_url = f"https://graph.microsoft.com/v1.0/drives/{drive_id}/root:/{file_path}:/content"
-        headers = {"Authorization": f"Bearer {access_token}"}
+async def fetch_file_from_sharepoint(drive_id, file_path, access_token):
+    graph_url = f"https://graph.microsoft.com/v1.0/drives/{drive_id}/root:/{file_path}:/content"
+    headers = {"Authorization": f"Bearer {access_token}"}
 
-        async with aiohttp.ClientSession() as session:
-            async with session.get(graph_url, headers=headers) as response:
-                if response.status == 404:
-                    logging.info("File not found in Sharepoint: %s", file_path)
-                    abort(404)
-                elif response.status != 200:
-                    logging.error("Failed to download file: %s", response.status)
-                    abort(response.status)
-                blob_file = io.BytesIO(await response.read())
-                blob_file.seek(0)
-                mime_type = mimetypes.guess_type(file_path)[0] or "application/octet-stream"
-                return await send_file(blob_file, mimetype=mime_type, as_attachment=False,
-                                       attachment_filename=file_path)
+    async with aiohttp.ClientSession() as session:
+        async with session.get(graph_url, headers=headers) as response:
+            if response.status == 404:
+                logging.info("File not found in SharePoint: %s", file_path)
+                abort(404)
+            elif response.status != 200:
+                logging.error("Failed to download file: %s", response.status)
+                abort(response.status)
+            blob_file = io.BytesIO(await response.read())
+            blob_file.seek(0)
+            mime_type = mimetypes.guess_type(file_path)[0] or "application/octet-stream"
 
-async def content_file(usecase: str, path: str, auth_claims: Dict[str, Any]):
-    """
-    Serve content files from blob storage from within the app to keep the example self-contained.
-    *** NOTE *** if you are using app services authentication, this route will return unauthorized to all users that are not logged in
-    if AZURE_ENFORCE_ACCESS_CONTROL is not set or false, logged in users can access all files regardless of access control
-    if AZURE_ENFORCE_ACCESS_CONTROL is set to true, logged in users can only access files they have access to
-    This is also slow and memory hungry.
-    """
-    # Check if use case exists
-    assert usecase_exists(usecase), f"Use case `{usecase}` not found"
+            return blob_file, mime_type
 
-    # Remove page number from path, filename-1.txt -> filename.txt
-    # This shouldn't typically be necessary as browsers don't send hash fragments to servers
-    if path.find("#page=") > 0:
-        path_parts = path.rsplit("#page=", 1)
-        path = path_parts[0]
-    logging.info("Opening file %s for usecase %s", path, usecase)
+
+async def fetch_file_from_blob(usecase: str, path: str, auth_claims: Dict[str, Any]):
     blob_container_client: ContainerClient = current_app.config[CONFIG_BLOB_CONTAINER_CLIENTS][usecase]
     blob: Union[BlobDownloader, DatalakeDownloader]
     try:
@@ -192,6 +161,37 @@ async def content_file(usecase: str, path: str, auth_claims: Dict[str, Any]):
     blob_file = io.BytesIO()
     await blob.readinto(blob_file)
     blob_file.seek(0)
+    return blob_file, mime_type
+
+@bp.route("/content/usecase/<usecase>/<path:path>")
+@authenticated_path
+async def content_file(usecase: str, path: str, auth_claims: Dict[str, Any]):
+    """
+    Serve content files from blob storage from within the app to keep the example self-contained.
+    *** NOTE *** if you are using app services authentication, this route will return unauthorized to all users that are not logged in
+    if AZURE_ENFORCE_ACCESS_CONTROL is not set or false, logged in users can access all files regardless of access control
+    if AZURE_ENFORCE_ACCESS_CONTROL is set to true, logged in users can only access files they have access to
+    This is also slow and memory hungry.
+    """
+    # Check if use case exists
+    assert usecase_exists(usecase), f"Use case `{usecase}` not found"
+
+    # Remove page number from path, filename-1.txt -> filename.txt
+    # This shouldn't typically be necessary as browsers don't send hash fragments to servers
+    if path.find("#page=") > 0:
+        path_parts = path.rsplit("#page=", 1)
+        path = path_parts[0]
+    logging.info("Opening file %s for usecase %s", path, usecase)
+
+    if path.split('/')[0]=="drives":
+        drive_id = path.split('/')[1]
+        file_path = path.split(':')[1]
+        # Download and send the file
+        blob_file, mime_type = await fetch_file_from_sharepoint(drive_id=drive_id, file_path=file_path)
+    else:
+        blob_file, mime_type = await fetch_file_from_blob(usecase, path, auth_claims)
+
+
     return await send_file(blob_file, mimetype=mime_type, as_attachment=False, attachment_filename=path)
 
 
