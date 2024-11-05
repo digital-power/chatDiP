@@ -213,6 +213,19 @@ class Approach(ABC):
                 for doc in results
             ]
 
+    def get_citation_metadata(
+            self,
+            results: list[Document],
+            use_image_citation: bool):
+        return [
+            {
+                "citation": self.get_citation((doc.sourcepage or ""), use_image_citation),
+                "sourcepage": doc.sourcepage,
+                "sourcefile": doc.sourcefile
+            } for doc in results
+        ]
+
+
     def get_citation(self, sourcepage: str, use_image_citation: bool) -> str:
         if use_image_citation:
             return sourcepage
