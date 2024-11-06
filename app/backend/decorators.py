@@ -75,9 +75,9 @@ def with_access_token(func):
         token_url = f"https://login.microsoftonline.com/{os.getenv('AZURE_TENANT_ID')}/oauth2/v2.0/token"
         headers = {"Content-Type": "application/x-www-form-urlencoded"}
         data = {
-            "client_id": os.getenv('AZURE_APPLICATION_ID'),
+            "client_id": os.getenv('AZURE_CLIENT_APP_ID'),
             "scope": "https://graph.microsoft.com/.default",
-            "client_secret": os.getenv('AZURE_APPLICATION_SECRET'),
+            "client_secret": os.getenv('AZURE_CLIENT_APP_SECRET'),
             "grant_type": "client_credentials"
         }
 
