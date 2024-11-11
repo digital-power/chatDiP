@@ -6,17 +6,32 @@
     gap: 10px;
     flex: 1;
     justify-content: center;
+    margin: 0;
 }
 
 .example {
     word-break: break-word;
-    background: #dbdbdb;
     border-radius: 8px;
     display: flex;
     flex-direction: column;
     padding: 20px;
     margin-bottom: 5px;
     cursor: pointer;
+    position: relative;
+    background: #ffffff;
+}
+
+.example:before {
+    content: "";
+    width: 0px;
+    height: 0px;
+    position: absolute;
+    border-left: 10px solid #ffffff;
+    border-right: 10px solid transparent;
+    border-top: 10px solid #ffffff;
+    border-bottom: 10px solid transparent;
+    left: 19px;
+    bottom: -19px;
 }
 
 .example:hover {
@@ -31,6 +46,8 @@
     font-size: 18px;
     width: 280px;
     min-height: 100px;
+    color: #044318;
+    text-align: center;
 }
 
 @media only screen and (max-height: 780px) {
