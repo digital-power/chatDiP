@@ -69,7 +69,7 @@ elif [ -n "$OPENAI_API_KEY" ]; then
   openAiApiKeyArg="--openaikey $OPENAI_API_KEY"
 fi
 
-./.venv/bin/python ./app/backend/prepdocs.py './data/content' --remove-all --verbose \
+./.venv/bin/python ./app/backend/prepdocs.py './data/old/*' --removeall --verbose \
 --subscriptionid $AZURE_SUBSCRIPTION_ID  \
 --storageaccount "$AZURE_STORAGE_ACCOUNT" --container "$AZURE_STORAGE_CONTAINER" --storageresourcegroup $AZURE_STORAGE_RESOURCE_GROUP \
 --searchservice "$AZURE_SEARCH_SERVICE" --index "$AZURE_SEARCH_INDEX" \
@@ -81,6 +81,7 @@ $openAiApiKeyArg --openaiorg "$OPENAI_ORGANIZATION" \
 --documentintelligenceservice "$AZURE_DOCUMENTINTELLIGENCE_SERVICE" \
 $searchImagesArg $visionEndpointArg \
 $adlsGen2StorageAccountArg $adlsGen2FilesystemArg $adlsGen2FilesystemPathArg \
-$tenantArg $aclArg \
+--tenantid $AZURE_AUTH_TENANT_ID \
+$aclArg \
 $disableVectorsArg $localPdfParserArg $localHtmlParserArg \
 $integratedVectorizationArg
