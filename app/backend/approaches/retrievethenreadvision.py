@@ -43,7 +43,8 @@ class RetrieveThenReadVisionApproach(Approach):
         auth_helper: AuthenticationHelper,
         gpt4v_deployment: Optional[str],
         gpt4v_model: str,
-        embedding_deployment: Optional[str],  # Not needed for non-Azure OpenAI or for retrieval_mode="text"
+        # Not needed for non-Azure OpenAI or for retrieval_mode="text"
+        embedding_deployment: Optional[str],
         embedding_model: str,
         embedding_dimensions: int,
         sourcepage_field: str,
@@ -78,21 +79,25 @@ class RetrieveThenReadVisionApproach(Approach):
     ) -> dict[str, Any]:
         q = messages[-1]["content"]
         if not isinstance(q, str):
-            raise ValueError("The most recent message content must be a string.")
+            raise ValueError(
+                "The most recent message content must be a string.")
 
         overrides = context.get("overrides", {})
-        usecase = overrides.get("usecase", "hr")
+        usecase = overrides.get("usecase", "demo")
         assert usecase_exists(usecase), f"Usecase {usecase} not found"
 
         auth_claims = context.get("auth_claims", {})
-        use_text_search = overrides.get("retrieval_mode") in ["text", "hybrid", None]
+        use_text_search = overrides.get("retrieval_mode") in [
+            "text", "hybrid", None]
         use_vector_search = overrides.get("retrieval_mode") in [
             "vectors",
             "hybrid",
             None,
         ]
-        use_semantic_ranker = True if overrides.get("semantic_ranker") else False
-        use_semantic_captions = True if overrides.get("semantic_captions") else False
+        use_semantic_ranker = True if overrides.get(
+            "semantic_ranker") else False
+        use_semantic_captions = True if overrides.get(
+            "semantic_captions") else False
         top = overrides.get("top", 3)
         minimum_search_score = overrides.get("minimum_search_score", 0.0)
         minimum_reranker_score = overrides.get("minimum_reranker_score", 0.0)
@@ -136,10 +141,12 @@ class RetrieveThenReadVisionApproach(Approach):
         )
 
         image_list: list[ChatCompletionContentPartImageParam] = []
-        user_content: list[ChatCompletionContentPartParam] = [{"text": q, "type": "text"}]
+        user_content: list[ChatCompletionContentPartParam] = [
+            {"text": q, "type": "text"}]
 
         # Process results
-        sources_content = self.get_sources_content(results, use_semantic_captions, use_image_citation=True)
+        sources_content = self.get_sources_content(
+            results, use_semantic_captions, use_image_citation=True)
 
         if send_text_to_gptvision:
             content = "\n".join(sources_content)
@@ -154,7 +161,8 @@ class RetrieveThenReadVisionApproach(Approach):
         response_token_limit = 1024
         updated_messages = build_messages(
             model=self.gpt4v_model,
-            system_prompt=overrides.get("prompt_template", self.system_chat_template_gpt4v),
+            system_prompt=overrides.get(
+                "prompt_template", self.system_chat_template_gpt4v),
             new_user_content=user_content,
             max_tokens=self.gpt4v_token_limit - response_token_limit,
         )
@@ -197,7 +205,8 @@ class RetrieveThenReadVisionApproach(Approach):
                     "Prompt to generate answer",
                     [str(message) for message in updated_messages],
                     (
-                        {"model": self.gpt4v_model, "deployment": self.gpt4v_deployment}
+                        {"model": self.gpt4v_model,
+                            "deployment": self.gpt4v_deployment}
                         if self.gpt4v_deployment
                         else {"model": self.gpt4v_model}
                     ),

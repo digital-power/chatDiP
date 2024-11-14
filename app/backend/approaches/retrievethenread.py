@@ -48,7 +48,8 @@ info4.pdf: In-network institutions include Overlake, Swedish and others in the r
         chatgpt_model: str,
         chatgpt_deployment: Optional[str],  # Not needed for non-Azure OpenAI
         embedding_model: str,
-        embedding_deployment: Optional[str],  # Not needed for non-Azure OpenAI or for retrieval_mode="text"
+        # Not needed for non-Azure OpenAI or for retrieval_mode="text"
+        embedding_deployment: Optional[str],
         embedding_dimensions: int,
         sourcepage_field: str,
         content_field: str,
@@ -78,20 +79,24 @@ info4.pdf: In-network institutions include Overlake, Swedish and others in the r
     ) -> dict[str, Any]:
         q = messages[-1]["content"]
         if not isinstance(q, str):
-            raise ValueError("The most recent message content must be a string.")
+            raise ValueError(
+                "The most recent message content must be a string.")
         overrides = context.get("overrides", {})
-        usecase = overrides.get("usecase", "hr")
+        usecase = overrides.get("usecase", "demo")
         assert usecase_exists(usecase), f"Usecase {usecase} not found"
 
         auth_claims = context.get("auth_claims", {})
-        use_text_search = overrides.get("retrieval_mode") in ["text", "hybrid", None]
+        use_text_search = overrides.get("retrieval_mode") in [
+            "text", "hybrid", None]
         use_vector_search = overrides.get("retrieval_mode") in [
             "vectors",
             "hybrid",
             None,
         ]
-        use_semantic_ranker = True if overrides.get("semantic_ranker") else False
-        use_semantic_captions = True if overrides.get("semantic_captions") else False
+        use_semantic_ranker = True if overrides.get(
+            "semantic_ranker") else False
+        use_semantic_captions = True if overrides.get(
+            "semantic_captions") else False
         top = overrides.get("top", 3)
         minimum_search_score = overrides.get("minimum_search_score", 0.0)
         minimum_reranker_score = overrides.get("minimum_reranker_score", 0.0)
@@ -117,7 +122,9 @@ info4.pdf: In-network institutions include Overlake, Swedish and others in the r
         )
 
         # Process results
-        sources_content = self.get_sources_content(results, use_semantic_captions, use_image_citation=False)
+        sources_content = self.get_sources_content(
+            results, use_semantic_captions, use_image_citation=False)
+        citations = self.get_citation_metadata(results=results, use_image_citation=False)
 
         # Append user message
         content = "\n".join(sources_content)
@@ -126,7 +133,8 @@ info4.pdf: In-network institutions include Overlake, Swedish and others in the r
         response_token_limit = 1024
         updated_messages = build_messages(
             model=self.chatgpt_model,
-            system_prompt=overrides.get("prompt_template", self.system_chat_template),
+            system_prompt=overrides.get(
+                "prompt_template", self.system_chat_template),
             few_shots=[
                 {"role": "user", "content": self.question},
                 {"role": "assistant", "content": self.answer},
@@ -149,6 +157,7 @@ info4.pdf: In-network institutions include Overlake, Swedish and others in the r
         data_points = {"text": sources_content}
         extra_info = {
             "data_points": data_points,
+            "citations" : citations,
             "thoughts": [
                 ThoughtStep(
                     "Search using user query",

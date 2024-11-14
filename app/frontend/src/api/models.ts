@@ -48,8 +48,15 @@ export type Thoughts = {
     props?: { [key: string]: string };
 };
 
+export type Citations = {
+    "citation": string;
+    "sourcepage": string;
+    "sourcefile": string;
+}
+
 export type ResponseContext = {
     data_points: string[];
+    citations : Citations[];
     followup_questions: string[] | null;
     thoughts: Thoughts[];
 };

@@ -212,17 +212,29 @@ class Approach(ABC):
                 (self.get_citation((doc.sourcepage or ""), use_image_citation)) + ": " + nonewlines(doc.content or "")
                 for doc in results
             ]
+    def get_citation_metadata(
+            self,
+            results: list[Document],
+            use_image_citation: bool):
+        return [
+            {
+                "citation": self.get_citation((doc.sourcepage or ""), use_image_citation),
+                "sourcepage": doc.sourcepage,
+                "sourcefile": doc.sourcefile
+            } for doc in results
+        ]
+
 
     def get_citation(self, sourcepage: str, use_image_citation: bool) -> str:
         if use_image_citation:
             return sourcepage
         else:
             path, ext = os.path.splitext(sourcepage)
+            
             if ext.lower() == ".png":
                 page_idx = path.rfind("-")
                 page_number = int(path[page_idx + 1 :])
                 return f"{path[:page_idx]}.pdf#page={page_number}"
-
             return sourcepage
 
     async def compute_text_embedding(self, q: str):

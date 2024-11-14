@@ -18,7 +18,7 @@ const router = createHashRouter([
         children: [
             {
                 index: true,
-                element: <Navigate to="usecase/hr" replace />
+                element: <Navigate to="usecase/demo" replace />
             },
             {
                 path: "usecase/:usecase_id",

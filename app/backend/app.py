@@ -113,8 +113,55 @@ async def favicon():
 async def assets(path):
     return await send_from_directory(Path(__file__).resolve().parent / "static" / "assets", path)
 
+async def fetch_file_from_blob(usecase: str, path: str, auth_claims: Dict[str, Any]):
+    """
+    Fetch a file from Azure Blob Storage.
 
-@bp.route("/content/usecase/<usecase>/<path>")
+    Args:
+        usecase (str): The use case identifier for accessing the correct blob container.
+        path (str): The path of the file in blob storage.
+        auth_claims (Dict[str, Any]): The authentication claims of the user.
+
+    Returns:
+        Tuple[io.BytesIO, str]: A tuple containing the file as a BytesIO object and its MIME type.
+
+    Raises:
+        abort: If the file is not found in either the general blob container or the user’s directory.
+    """
+    blob_container_client: ContainerClient = current_app.config[CONFIG_BLOB_CONTAINER_CLIENTS][usecase]
+    try:
+        blob = await blob_container_client.get_blob_client(path).download_blob()
+    except ResourceNotFoundError:
+        logging.info("Path not found in general Blob container: %s", path)
+
+        # Attempt to access user-specific uploads if enabled
+        if current_app.config[CONFIG_USER_UPLOAD_ENABLED]:
+            try:
+                user_oid = auth_claims["oid"]
+                user_blob_container_client = current_app.config[CONFIG_USER_BLOB_CONTAINER_CLIENT]
+                user_directory_client = user_blob_container_client.get_directory_client(user_oid)
+                file_client = user_directory_client.get_file_client(path)
+                blob = await file_client.download_file()
+            except ResourceNotFoundError:
+                logging.exception("Path not found in DataLake: %s", path)
+                abort(404)
+        else:
+            abort(404)
+
+    if not blob.properties or "content_settings" not in blob.properties:
+        abort(404)
+
+    mime_type = blob.properties["content_settings"]["content_type"]
+    if mime_type == "application/octet-stream":
+        mime_type = mimetypes.guess_type(path)[0] or "application/octet-stream"
+
+    # Read the blob content into a BytesIO object
+    blob_file = io.BytesIO()
+    await blob.readinto(blob_file)
+    blob_file.seek(0)
+    return blob_file, mime_type
+
+@bp.route("/content/usecase/<usecase>/<path:path>")
 @authenticated_path
 async def content_file(usecase: str, path: str, auth_claims: Dict[str, Any]):
     """
@@ -129,36 +176,43 @@ async def content_file(usecase: str, path: str, auth_claims: Dict[str, Any]):
 
     # Remove page number from path, filename-1.txt -> filename.txt
     # This shouldn't typically be necessary as browsers don't send hash fragments to servers
-    if path.find("#page=") > 0:
-        path_parts = path.rsplit("#page=", 1)
-        path = path_parts[0]
+    print("PAD  " + path)
+    # if path.find("#page=") > 0:
+    #     path_parts = path.rsplit("#page=", 1)
+    #     path = path_parts[0]
+
+    # if "#page=" in path:
+    #     path = path.rsplit("#page=", 1)[0]
+
     logging.info("Opening file %s for usecase %s", path, usecase)
-    blob_container_client: ContainerClient = current_app.config[CONFIG_BLOB_CONTAINER_CLIENTS][usecase]
-    blob: Union[BlobDownloader, DatalakeDownloader]
-    try:
-        blob = await blob_container_client.get_blob_client(path).download_blob()
-    except ResourceNotFoundError:
-        logging.info("Path not found in general Blob container: %s", path)
-        if current_app.config[CONFIG_USER_UPLOAD_ENABLED]:
-            try:
-                user_oid = auth_claims["oid"]
-                user_blob_container_client = current_app.config[CONFIG_USER_BLOB_CONTAINER_CLIENT]
-                user_directory_client: FileSystemClient = user_blob_container_client.get_directory_client(user_oid)
-                file_client = user_directory_client.get_file_client(path)
-                blob = await file_client.download_file()
-            except ResourceNotFoundError:
-                logging.exception("Path not found in DataLake: %s", path)
-                abort(404)
-        else:
-            abort(404)
-    if not blob.properties or not blob.properties.has_key("content_settings"):
-        abort(404)
-    mime_type = blob.properties["content_settings"]["content_type"]
-    if mime_type == "application/octet-stream":
-        mime_type = mimetypes.guess_type(path)[0] or "application/octet-stream"
-    blob_file = io.BytesIO()
-    await blob.readinto(blob_file)
-    blob_file.seek(0)
+    #blob_container_client: ContainerClient = current_app.config[CONFIG_BLOB_CONTAINER_CLIENTS][usecase]
+    #blob: Union[BlobDownloader, DatalakeDownloader]
+    # Handle Azure Blob Storage request
+    blob_file, mime_type = await fetch_file_from_blob(usecase, path, auth_claims)
+    # try:
+    #     blob = await blob_container_client.get_blob_client(path).download_blob()
+    # except ResourceNotFoundError:
+    #     logging.info("Path not found in general Blob container: %s", path)
+    #     if current_app.config[CONFIG_USER_UPLOAD_ENABLED]:
+    #         try:
+    #             user_oid = auth_claims["oid"]
+    #             user_blob_container_client = current_app.config[CONFIG_USER_BLOB_CONTAINER_CLIENT]
+    #             user_directory_client = user_blob_container_client.get_directory_client(user_oid)
+    #             file_client = user_directory_client.get_file_client(path)
+    #             blob = await file_client.download_file()
+    #         except ResourceNotFoundError:
+    #             logging.exception("Path not found in DataLake: %s", path)
+    #             abort(404)
+    #     else:
+    #         abort(404)
+    # if not blob.properties or not blob.properties.has_key("content_settings"):
+    #     abort(404)
+    # mime_type = blob.properties["content_settings"]["content_type"]
+    # if mime_type == "application/octet-stream":
+    #     mime_type = mimetypes.guess_type(path)[0] or "application/octet-stream"
+    # blob_file = io.BytesIO()
+    # await blob.readinto(blob_file)
+    # blob_file.seek(0)
     return await send_file(blob_file, mimetype=mime_type, as_attachment=False, attachment_filename=path)
 
 

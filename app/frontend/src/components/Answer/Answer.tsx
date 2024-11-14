@@ -41,8 +41,9 @@ export const Answer = ({
 }: Props) => {
     const followupQuestions = answer.context?.followup_questions;
     const messageContent = answer.message.content;
-    console.log(messageContent)
+    const citationsList = answer.context.citations;
     const parsedAnswer = useMemo(() => parseAnswerToHtml(messageContent, isStreaming, onCitationClicked), [answer]);
+    const contentPrefix = "https://stsch4ekggdgkoc.blob.core.windows.net/content/";
 
     const sanitizedAnswerHtml = DOMPurify.sanitize(parsedAnswer.answerHtml);
 
@@ -85,10 +86,19 @@ export const Answer = ({
                     <Stack horizontal wrap tokens={{ childrenGap: 5 }}>
                         <span className={styles.citationLearnMore}>Citations:</span>
                         {parsedAnswer.citations.map((x, i) => {
-                            const path = getCitationFilePath(x);
+                            let path;
+                            let title;
+                            
+                            path = citationsList[i]['sourcepage']
+
+                            if (path.startsWith(contentPrefix)) {
+                                title = path.slice(contentPrefix.length);
+                            } else {
+                                title = x
+                            }
                             return (
-                                <a key={i} className={styles.citation} title={x} onClick={() => onCitationClicked(path)}>
-                                    {`${++i}. ${x}`}
+                                <a key={i} className={styles.citation} title={title} onClick={() => onCitationClicked(path)}>
+                                    {`${++i}. ${title}`}
                                 </a>
                             );
                         })}
