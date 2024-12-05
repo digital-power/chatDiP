@@ -189,7 +189,7 @@
       "value": "${USE_GPT4V=false}"
     },
     "enableLanguagePicker": {
-      "value": "${ENABLE_LANGUAGE_PICKER=false}"
+      "value": "${ENABLE_LANGUAGE_PICKER=true}"
     },
     "useSpeechInputBrowser": {
       "value": "${USE_SPEECH_INPUT_BROWSER=false}"
