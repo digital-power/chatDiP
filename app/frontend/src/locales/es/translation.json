@@ -6,6 +6,18 @@
     "login": "Iniciar sesión",
     "logout": "Cerrar sesión",
     "clearChat": "Borrar chat",
+    "example_questions": {
+        "hr": {
+            "1": "¿Cuándo tengo derecho a un permiso especial?",
+            "2": "¿Cómo informo que estoy enfermo?",
+            "3": "¿Qué días son festivos públicos?"
+        },
+        "demo": {
+            "1": "¿Qué incluye el informe financiero anual del Consejo de Administración?",
+            "2": "¿Cómo garantiza el Consejo de Administración la seguridad de los datos?",
+            "3": "¿Qué hace el Consejo de Administración para fomentar la sostenibilidad?"
+        }
+    },
     "history": {
         "chatHistory": "Historial de chat",
         "openChatHistory": "Abrir historial de chat",

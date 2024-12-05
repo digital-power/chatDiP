@@ -3,7 +3,7 @@
     display: flex;
     flex-direction: column;
     background: radial-gradient(circle at center top, rgba(50, 205, 50, 0.5) 0%, rgba(4, 67, 24, 1) 70%);
-    margin-top: 1rem;
+    min-height: 94vh;
 }
 
 .chatRoot {
@@ -26,8 +26,6 @@
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    max-height: 64rem;
-    padding-top: 1rem;
 }
 
 .chatEmptyStateTitle {
@@ -117,7 +115,6 @@
     padding: 1rem;
     width: 100%;
     max-width: 64.25rem;
-    background: #f2f2f2;
 }
 
 .chatAnalysisPanel {
@@ -157,12 +154,10 @@
 }
 
 @media (min-width: 992px) {
-    .container {
-        margin-top: 1.25rem;
-    }
+
 
     .chatEmptyState {
-        padding-top: 3.75rem;
+        padding-top: 1rem;
     }
 
     .chatEmptyStateTitle {

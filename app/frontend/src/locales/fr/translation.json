@@ -6,6 +6,18 @@
     "login": "Connexion",
     "logout": "Déconnexion",
     "clearChat": "Effacer le chat",
+    "example_questions": {
+        "hr": {
+            "1": "Quand ai-je droit à un congé spécial ?",
+            "2": "Comment signaler une maladie ?",
+            "3": "Quels jours sont des jours fériés ?"
+        },
+        "demo": {
+            "1": "Que contient le rapport financier annuel du Conseil d'administration ?",
+            "2": "Comment le Conseil d'administration garantit-il la sécurité des données ?",
+            "3": "Que fait le Conseil d'administration pour promouvoir la durabilité ?"
+        }
+    },
     "history": {
         "chatHistory": "Historique du chat",
         "openChatHistory": "Ouvrir l'historique du chat",

@@ -9,14 +9,14 @@
     
     "example_questions": {
         "hr": {
-            "1": "Quand ai-je droit à un congé spécial ?",
-            "2": "Comment signaler que je suis malade ?",
-            "3": "Quels jours sont des jours fériés ?"
+            "1":"When am I to special leave?",
+            "2":"How do I report sick?",
+            "3":"Which days are public holidays?"
         },
         "demo": {
-            "1": "démooooo",
-            "2": "Comment signaler que je suis malade ?",
-            "3": "Quels jours sont des jours fériés ?"
+           "1":"Wat staat er in het financieel jaarverslag van de RvA?", 
+           "2":"Hoe zorgt de RvA dat gegevens veilig zijn?", 
+           "3":"Wat doet de rva om duurzaamheid te stimuleren?" 
         }
     },
     "history": {

@@ -12,11 +12,11 @@
 
 .example {
     word-break: break-word;
-    background: #dbdbdb;
-    border-radius: 0.5rem;
     display: flex;
+    border-radius: 8px;
     flex-direction: column;
-    margin-bottom: 0.3125rem;
+    padding: 20px;
+    margin-bottom: 80px;
     cursor: pointer;
     position: relative;
     background: #ffffff;
@@ -44,10 +44,9 @@
 
 .exampleText {
     margin: 0;
-    font-size: 1.25rem;
-    width: 25rem;
-    padding: 0.5rem;
-    min-height: 4.5rem;
+    font-size: 18px;
+    width: 280px;
+    min-height: 100px;
     color: #044318;
     text-align: center;
 }
