@@ -14,14 +14,13 @@ interface Props {
 
 export const ExampleList = ({ onExampleClicked, currentUsecase, useGPT4V }: Props) => {
     const { t } = useTranslation();
-    
+
     // Ophalen van vragen en filteren van placeholders
     const exampleQuestions = t("example_questions", { returnObjects: true }) as Record<string, Record<string, string>>;
-    
+
     // Zorg ervoor dat de vragen voor de juiste usecase worden opgehaald
-    const examples = Object.values(exampleQuestions[currentUsecase.id] || {})
-        .filter((question) => typeof question === "string" && question.trim().length > 0); // Filter lege of niet-relevante strings
-    
+    const examples = Object.values(exampleQuestions[currentUsecase.id] || {}).filter(question => typeof question === "string" && question.trim().length > 0); // Filter lege of niet-relevante strings
+
     return (
         <ul className={styles.examplesNavList}>
             {examples.map((question, i) => (
