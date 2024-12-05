@@ -3,12 +3,6 @@ import { useTranslation } from "react-i18next";
 
 import styles from "./Example.module.css";
 import config from "../../../../backend/approaches/config/config_approaches.json";
-import example_questions from "../../../../backend/approaches/config/config_approaches.json";
-const DEFAULT_EXAMPLES: string[] = [
-    "Wat staat er in het financieel jaarverslag van de RvA?",
-    "Hoe zorgt de RvA dat gegevens veilig zijn?",
-    "Wat doet de rva om duurzaamheid te stimuleren?"
-]; // pak default uit json
 
 type Usecase = (typeof config)[0];
 
@@ -28,8 +22,6 @@ export const ExampleList = ({ onExampleClicked, currentUsecase, useGPT4V }: Prop
     const examples = Object.values(exampleQuestions[currentUsecase.id] || {})
         .filter((question) => typeof question === "string" && question.trim().length > 0); // Filter lege of niet-relevante strings
     
-    console.log("Gevonden vragen:", examples);
-
     return (
         <ul className={styles.examplesNavList}>
             {examples.map((question, i) => (
