@@ -12,6 +12,7 @@ interface Props {
     currentUsecase: Usecase;
 }
 
+
 export const ExampleList = ({ onExampleClicked, currentUsecase, useGPT4V }: Props) => {
     const { t } = useTranslation();
 
