@@ -2,25 +2,23 @@ import { Example } from "./Example";
 import { useTranslation } from "react-i18next";
 
 import styles from "./Example.module.css";
-import config from "../../../../backend/approaches/config/config_approaches.json";
-
-type Usecase = (typeof config)[0];
 
 interface Props {
     onExampleClicked: (value: string) => void;
     useGPT4V?: boolean;
-    currentUsecase: Usecase;
+    currentUsecase: string;
 }
 
-
-export const ExampleList = ({ onExampleClicked, currentUsecase, useGPT4V }: Props) => {
+export const ExampleList = ({ onExampleClicked, currentUsecase }: Props) => {
     const { t } = useTranslation();
 
-    // Ophalen van vragen en filteren van placeholders
-    const exampleQuestions = t("example_questions", { returnObjects: true }) as Record<string, Record<string, string>>;
+    // Ophalen van voorbeeldvragen voor de huidige usecase
+    const exampleQuestions = t(`approach.${currentUsecase}.example_questions`, {
+        returnObjects: true
+    }) as Record<string, string>;
 
-    // Zorg ervoor dat de vragen voor de juiste usecase worden opgehaald
-    const examples = Object.values(exampleQuestions[currentUsecase.id] || {}).filter(question => typeof question === "string" && question.trim().length > 0); // Filter lege of niet-relevante strings
+    // Filter lege of ongeldige vragen
+    const examples = Object.values(exampleQuestions || {}).filter(question => typeof question === "string" && question.trim().length > 0);
 
     return (
         <ul className={styles.examplesNavList}>

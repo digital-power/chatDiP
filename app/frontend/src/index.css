@@ -53,6 +53,6 @@ body {
 
 @media (min-width: 992px) {
     html {
-        font-size: 16px; /* Standard size for desktops */
+        font-size: 15px; /* Standard size for desktops */
     }
 }

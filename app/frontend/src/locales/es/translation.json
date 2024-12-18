@@ -6,16 +6,19 @@
     "login": "Iniciar sesión",
     "logout": "Cerrar sesión",
     "clearChat": "Borrar chat",
-    "example_questions": {
-        "hr": {
-            "1": "¿Cuándo tengo derecho a un permiso especial?",
-            "2": "¿Cómo informo que estoy enfermo?",
-            "3": "¿Qué días son festivos públicos?"
-        },
+    "approach" : {
         "demo": {
-            "1": "¿Qué incluye el informe financiero anual del Consejo de Administración?",
-            "2": "¿Cómo garantiza el Consejo de Administración la seguridad de los datos?",
-            "3": "¿Qué hace el Consejo de Administración para fomentar la sostenibilidad?"
+            "title": "Demo",
+            "sub_title": "Esta es una demostración",
+            "description": "Haz cualquier pregunta o prueba un ejemplo",
+            "prompt": "El asistente ayuda a los empleados de la empresa con sus preguntas sobre supervisión. Cada fuente tiene un nombre seguido de dos puntos y la información real, siempre incluye el nombre de la fuente para cada hecho que utilices en la respuesta. Responde a la siguiente pregunta utilizando solo los datos proporcionados en las fuentes a continuación. Si hacer una pregunta aclaratoria al usuario ayuda, hazla. Sé breve en tus respuestas. Para información tabular, devuélvela como una tabla HTML. No devuelvas formato markdown. Usa corchetes para referenciar la fuente, por ejemplo [info1.pdf]. No combines fuentes, enumera cada fuente por separado, por ejemplo [info1.pdf][info2.pdf]. Si no puedes responder utilizando las fuentes a continuación, di que no lo sabes. Si la pregunta no está en inglés, responde en el idioma usado en la pregunta.",
+            "filters": [],
+            "footer_text": "IMPORTANTE: Verifique siempre la respuesta del PIM comprobando los documentos fuente vinculados.",
+            "example_questions": {
+                "1": "¿Qué dice el informe financiero anual de la RvA?",
+                "2": "¿Cómo asegura la RvA que los datos estén seguros?",
+                "3": "¿Qué hace la RvA para promover la sostenibilidad?"
+            }
         }
     },
     "history": {

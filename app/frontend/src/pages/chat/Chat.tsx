@@ -45,19 +45,10 @@ import { LanguagePicker } from "../../i18n/LanguagePicker";
 import config from "../../../../backend/approaches/config/config_approaches.json";
 
 const Chat = () => {
-    const defaultPromptTemplate = [
-        "Assistant helps the company employees with their questions. Be brief in your answers.",
-        "Answer ONLY with the facts listed in the list of sources below. If there isn't enough information below, say you don't know.",
-        "Do not generate answers that don't use the sources below. If asking a clarifying question to the user would help, ask the question.",
-        "For tabular information return it as an html table. Do not return markdown format. If the question is not in English, answer in the language used in the question.",
-        "Each source has a name followed by colon and the actual information, always include the source name for each fact you use in the response.",
-        "Use square brackets to reference the source, for example [info1.txt]. Don't combine sources, list each source separately, for example [info1.txt][info2.pdf]."
-    ].join(" ");
     const configArray = Object.values(config);
     type Usecase = (typeof configArray)[0];
 
     const [isConfigPanelOpen, setIsConfigPanelOpen, currentUsecase] = useOutletContext<[boolean, (arg: boolean) => void, Usecase]>();
-    const [promptTemplate, setPromptTemplate] = useState<string>(defaultPromptTemplate);
     const [isHistoryPanelOpen, setIsHistoryPanelOpen] = useState(false);
 
     const [temperature, setTemperature] = useState<number>(0.3);
@@ -131,8 +122,12 @@ const Chat = () => {
             if (!config.showVectorOption) {
                 setRetrievalMode(RetrievalMode.Text);
             }
+            if (currentUsecase?.id === "demo") {
+                setshowLanguagePicker(true);
+            } else {
+                setshowLanguagePicker(false);
+            }
             setShowUserUpload(config.showUserUpload);
-            setshowLanguagePicker(config.showLanguagePicker);
             setShowSpeechInput(config.showSpeechInput);
             setShowSpeechOutputBrowser(config.showSpeechOutputBrowser);
             setShowSpeechOutputAzure(config.showSpeechOutputAzure);
@@ -225,7 +220,7 @@ const Chat = () => {
                         vector_fields: vectorFieldList,
                         use_gpt4v: useGPT4V,
                         gpt4v_input: gpt4vInput,
-                        language: i18n.language,
+                        language: !showLanguagePicker ? "en" : i18n.language,
                         ...(seed !== null ? { seed: seed } : {})
                     }
                 },
@@ -280,7 +275,20 @@ const Chat = () => {
     useEffect(() => chatMessageStreamEnd.current?.scrollIntoView({ behavior: "auto" }), [streamedAnswers]);
     useEffect(() => {
         getConfig();
-    }, []);
+    }, [currentUsecase?.id]);
+
+    const isFirstRender = useRef(true);
+    // useEffect(() => {
+    //     if (isFirstRender.current) {
+    //       isFirstRender.current = false;
+    //       return;
+    //     }
+    
+    //     if (showLanguagePicker) {
+    //       window.location.reload();
+    //     }
+    //   }, [showLanguagePicker]);
+
 
     const onPromptTemplateChange = (_ev?: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) => {
         setPromptTemplate(newValue || "");
@@ -387,6 +395,15 @@ const Chat = () => {
     const shouldStreamId = useId("shouldStream");
     const shouldStreamFieldId = useId("shouldStreamField");
     const { t, i18n } = useTranslation();
+    const [promptTemplate, setPromptTemplate] = useState<string>(t(`approach.${currentUsecase.id}.prompt`));
+    const title = t(`approach.${currentUsecase.id}.title`);
+    const sub_title = t(`approach.${currentUsecase.id}.sub_title`);
+    const description = t(`approach.${currentUsecase.id}.description`);
+
+    const footer_text =
+        currentUsecase.id === "demo"
+            ? t(`approach.${currentUsecase.id}.footer_text`)
+            : "IMPORTANT: Please make sure to cross-check the provided answer with the relevant documents.";
 
     return (
         <div className={styles.container}>
@@ -416,10 +433,10 @@ const Chat = () => {
                                 width="120px"
                                 height="120px"
                             />
-                            <h1 className={styles.chatEmptyStateTitle}>{currentUsecase?.title}</h1>
-                            <h2 className={styles.chatEmptyStateSubtitle}>{currentUsecase?.sub_title}</h2>
-                            <h3 className={styles.chatEmptyStateDescription}>{currentUsecase?.description}</h3>
-                            <ExampleList onExampleClicked={onExampleClicked} currentUsecase={currentUsecase} useGPT4V={useGPT4V} />
+                            <h1 className={styles.chatEmptyStateTitle}>{title}</h1>
+                            <h2 className={styles.chatEmptyStateSubtitle}>{sub_title}</h2>
+                            <h3 className={styles.chatEmptyStateDescription}>{description}</h3>
+                            <ExampleList onExampleClicked={onExampleClicked} currentUsecase={currentUsecase.id} useGPT4V={useGPT4V} />
                             {showLanguagePicker && <LanguagePicker onLanguageChange={newLang => i18n.changeLanguage(newLang)} />}
                         </div>
                     ) : (
@@ -789,7 +806,7 @@ const Chat = () => {
                 </Panel>
             </div>
             <div className={styles.chatFooter}>
-                <p>IMPORTANT: Always verify the answer from PIM by checking the linked source documents</p>
+                <p>{footer_text}</p>
             </div>
         </div>
     );
