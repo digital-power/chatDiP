@@ -1,24 +1,24 @@
 import { Example } from "./Example";
+import { useTranslation } from "react-i18next";
 
 import styles from "./Example.module.css";
-import config from "../../../../backend/approaches/config/config_approaches.json";
-
-const DEFAULT_EXAMPLES: string[] = [
-    "Wat staat er in het financieel jaarverslag van de RvA?",
-    "Hoe zorgt de RvA dat gegevens veilig zijn?",
-    "Wat doet de rva om duurzaamheid te stimuleren?"
-];
-
-type Usecase = (typeof config)[0];
 
 interface Props {
     onExampleClicked: (value: string) => void;
     useGPT4V?: boolean;
-    currentUsecase: Usecase;
+    currentUsecase: string;
 }
 
 export const ExampleList = ({ onExampleClicked, currentUsecase }: Props) => {
-    const examples: string[] = currentUsecase?.example_questions ?? DEFAULT_EXAMPLES;
+    const { t } = useTranslation();
+
+    // Ophalen van voorbeeldvragen voor de huidige usecase
+    const exampleQuestions = t(`approach.${currentUsecase}.example_questions`, {
+        returnObjects: true
+    }) as Record<string, string>;
+
+    // Filter lege of ongeldige vragen
+    const examples = Object.values(exampleQuestions || {}).filter(question => typeof question === "string" && question.trim().length > 0);
 
     return (
         <ul className={styles.examplesNavList}>

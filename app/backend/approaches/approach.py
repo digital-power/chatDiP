@@ -90,6 +90,11 @@ class ThoughtStep:
 
 
 class Approach(ABC):
+
+    # Allows usage of non-GPT model even if no tokenizer is available for accurate token counting
+    # Useful for using local small language models, for example
+    ALLOW_NON_GPT_MODELS = True
+
     def __init__(
         self,
         search_clients: dict[str, SearchClient],

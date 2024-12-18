@@ -48,6 +48,7 @@ def run_server(port: int):
             "AZURE_STORAGE_CONTAINER": "test-storage-container",
             "AZURE_STORAGE_RESOURCE_GROUP": "test-storage-rg",
             "AZURE_SUBSCRIPTION_ID": "test-storage-subid",
+            "ENABLE_LANGUAGE_PICKER": "false",
             "USE_SPEECH_INPUT_BROWSER": "false",
             "USE_SPEECH_OUTPUT_AZURE": "false",
             "AZURE_SEARCH_INDEX": "test-search-index",
@@ -72,12 +73,21 @@ def live_server_url(mock_env, mock_acs_search, free_port: int) -> Generator[str,
     proc.kill()
 
 
+@pytest.fixture(params=[(480, 800), (600, 1024), (768, 1024), (992, 1024), (1024, 768)])
+def sized_page(page: Page, request):
+    size = request.param
+    page.set_viewport_size({"width": size[0], "height": size[1]})
+    yield page
+
+
 def test_home(page: Page, live_server_url: str):
     page.goto(live_server_url)
     expect(page).to_have_title("AI Document Explorer")
 
 
-def test_chat(page: Page, live_server_url: str):
+def test_chat(sized_page: Page, live_server_url: str):
+    page = sized_page
+
     # Set up a mock route to the /chat endpoint with streaming results
     def handle(route: Route):
         # Assert that session_state is specified in the request (None for now)
@@ -358,6 +368,9 @@ def test_upload_hidden(page: Page, live_server_url: str):
     page.goto(live_server_url)
 
     expect(page).to_have_title("AI Document Explorer")
+
+    expect(page.get_by_role("button", name="Clear chat")).to_be_visible()
+    expect(page.get_by_role("button", name="Manage file uploads")).not_to_be_visible()
 
 
 def test_upload_disabled(page: Page, live_server_url: str):

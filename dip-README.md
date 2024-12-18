@@ -21,7 +21,7 @@ The easiest way to change the underlying data that the chatbot uses, is to repla
 
 > Uploading new documents will NOT delete the already existings data. To remove documents contact an owner.
 
-If you are an [owners](/dip-README.md#owners-of-this-project) of this project you can also use the `prepdocs` script to directly parse and upload documents from your local environment. You can add the `--remove` or `--removeall` flag in the shell script to delete data from the index. Check [prepdocs.py](/scripts/prepdocs.py) on how to use them.
+If you are an [owners](/dip-README.md#owners-of-this-project) of this project you can also use the `prepdocs` script to directly parse and upload documents from your local environment. You can add the `--remove` or `--removeall` flag in the shell script to delete data from the index. Check [prepdocs.py](/app/backend/prepdocs.py) on how to use them.
 
 ### Changing the infrastructure
 For the infrastructure you can use the same method as for data by first changing the Bicep files in the `/infra` folder. Secondly, after committing and pushing the code the to remote `main` branch, a "deploy" pipeline will update the infrastructure of the Azure environment.
