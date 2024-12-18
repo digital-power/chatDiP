@@ -283,12 +283,11 @@ const Chat = () => {
     //       isFirstRender.current = false;
     //       return;
     //     }
-    
+
     //     if (showLanguagePicker) {
     //       window.location.reload();
     //     }
     //   }, [showLanguagePicker]);
-
 
     const onPromptTemplateChange = (_ev?: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) => {
         setPromptTemplate(newValue || "");
